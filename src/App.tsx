@@ -21,6 +21,7 @@ const tools = [
   ['AI', 'Research / prompting / debugging / iteration'],
 ]
 
+const BASE = import.meta.env.BASE_URL
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
 
 function App() {
@@ -97,6 +98,7 @@ function App() {
         <div
           className="intro-image"
           style={{
+            backgroundImage: `linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.78) 70%, #050505 100%), url('${BASE}assets/palat.jpeg')`,
             opacity: clamp(1 - progress / 0.92, 0, 1),
             transform: 'scale(' + (1 + progress * 0.018) + ')',
           }}
@@ -104,7 +106,7 @@ function App() {
         <div className="intro-vignette" />
 
         <ParticleMorph
-          images={['/particles/b1o.svg', '/particles/globe.svg', '/particles/keyboard.svg']}
+          images={[`${BASE}particles/b1o.svg`, `${BASE}particles/globe.svg`, `${BASE}particles/keyboard.svg`]}
           progress={progress}
           particleDensity={1}
           className="particle-canvas"
