@@ -32,9 +32,7 @@ body, canvas { overscroll-behavior: none; }
   position: absolute;
   inset: -4%;
   z-index: 0;
-  background:
-    linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.78) 70%, #050505 100%),
-    url('/assets/palat.jpeg') center / cover no-repeat;
+  background: #050505;
   filter: grayscale(0.25) contrast(1.08) saturate(0.7);
   transform-origin: center;
   will-change: opacity, transform;
