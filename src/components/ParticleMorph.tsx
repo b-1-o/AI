@@ -199,7 +199,7 @@ const vertexShader = [
   '  vAlpha = 0.62 + min(0.38, strength * 0.45);',
   '  gl_PointSize = uPixelRatio * (1.55 + strength * 0.55);',
   '}',
-].join('\\n')
+].join('\n')
 
 const fragmentShader = [
   'precision mediump float;',
@@ -211,7 +211,7 @@ const fragmentShader = [
   '  if (alpha < 0.01) discard;',
   '  gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);',
   '}',
-].join('\\n')
+].join('\n')
 
 export default function ParticleMorph({
   images,
