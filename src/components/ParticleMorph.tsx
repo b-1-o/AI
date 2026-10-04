@@ -73,6 +73,11 @@ export default function ParticleMorph({
 }: ParticleMorphProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const pointer = useRef({ x: 0, y: 0, active: false })
+  const progressRef = useRef(progress)
+
+  useEffect(() => {
+    progressRef.current = progress
+  }, [progress])
 
   const seed = useMemo(
     () =>
@@ -122,7 +127,7 @@ export default function ParticleMorph({
 
       ctx.clearRect(0, 0, width, height)
 
-      const p = clamp(progress, 0, images.length - 1)
+      const p = clamp(progressRef.current, 0, images.length - 1)
       const segment = Math.min(images.length - 2, Math.floor(p))
       const local = p - segment
       const t = smoothstep(0, 1, local)
@@ -207,7 +212,7 @@ export default function ParticleMorph({
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerleave', onPointerLeave)
     }
-  }, [images, particleDensity, progress, seed])
+  }, [images, particleDensity, seed])
 
   return <canvas ref={canvasRef} className={className} aria-hidden="true" />
 }
