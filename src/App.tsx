@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import AsciiRipple from './components/AsciiRipple'
 import HandsTyping from './components/HandsTyping'
+import RotatingBall from './components/RotatingBall'
 
 const projects = [
   { name: 'HEAVEN', type: 'Developer command center', stack: 'Next.js · TypeScript · PostgreSQL · Vercel', href: 'https://heaven-b1o.vercel.app/' },
@@ -106,10 +107,16 @@ function App() {
         <div className="intro-vignette" />
 
         <ParticleMorph
-          images={[`${BASE}particles/b1o.svg`, `${BASE}particles/globe.svg`, `${BASE}particles/keyboard.svg`]}
+          images={[`${BASE}assets/b1o.jpg`, `${BASE}assets/ball.jpg`, `${BASE}assets/keyboard.jpg`]}
           progress={progress}
           particleDensity={1}
           className="particle-canvas"
+        />
+
+        <RotatingBall
+          src={`${BASE}assets/ball.jpg`}
+          active={progress > 0.76 && progress < 1.34}
+          opacity={clamp(1 - Math.abs(progress - 1) / 0.22, 0, 1)}
         />
 
         <div className="intro-copy">
