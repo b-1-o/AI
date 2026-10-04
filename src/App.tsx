@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import AsciiRipple from './components/AsciiRipple'
-import HandsTyping from './components/HandsTyping'
 import RotatingBall from './components/RotatingBall'
+import b1oImage from '../assets/b1o.jpg'
+import ballImage from '../assets/ball.jpg'
+import keyboardImage from '../assets/keyboard.jpg'
+import palatImage from '../assets/palat.jpeg'
 
 const projects = [
   { name: 'HEAVEN', type: 'Developer command center', stack: 'Next.js · TypeScript · PostgreSQL · Vercel', href: 'https://heaven-b1o.vercel.app/' },
@@ -22,7 +25,6 @@ const tools = [
   ['AI', 'Research / prompting / debugging / iteration'],
 ]
 
-const BASE = import.meta.env.BASE_URL
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
 
 function App() {
@@ -30,6 +32,12 @@ function App() {
   const [isComplete, setIsComplete] = useState(false)
   const progressRef = useRef(0)
   const lastTouchY = useRef(0)
+
+
+  const progressRef = useRef(progress)
+  useEffect(() => {
+    progressRef.current = progress
+  }, [progress])
 
   const introText = useMemo(() => {
     const globeOpacity = clamp(1 - Math.abs(progress - 1) / 0.34, 0, 1)
@@ -99,7 +107,7 @@ function App() {
         <div
           className="intro-image"
           style={{
-            backgroundImage: `linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.78) 70%, #050505 100%), url('${BASE}assets/palat.jpeg')`,
+            backgroundImage: `linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.78) 70%, #050505 100%), url('${palatImage}')`,
             opacity: clamp(1 - progress / 0.92, 0, 1),
             transform: 'scale(' + (1 + progress * 0.018) + ')',
           }}
@@ -107,14 +115,14 @@ function App() {
         <div className="intro-vignette" />
 
         <ParticleMorph
-          images={[`${BASE}assets/b1o.jpg`, `${BASE}assets/ball.jpg`, `${BASE}assets/keyboard.jpg`]}
+          images={[b1oImage, ballImage, keyboardImage]}
           progress={progress}
           particleDensity={1}
           className="particle-canvas"
         />
 
         <RotatingBall
-          src={`${BASE}assets/ball.jpg`}
+          src={ballImage}
           active={progress > 0.76 && progress < 1.34}
           opacity={clamp(1 - Math.abs(progress - 1) / 0.22, 0, 1)}
         />
@@ -150,7 +158,6 @@ function App() {
           <span style={{ transform: 'scaleX(' + progress / 2 + ')' }} />
         </div>
 
-        {progress > 1.78 && <HandsTyping />}
       </section>
 
       <main className="content">
