@@ -25,6 +25,7 @@ const tools = [
 ]
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
+const particleImages = [b1oImage, ballImage, keyboardImage]
 
 function App() {
   const [progress, setProgress] = useState(0)
