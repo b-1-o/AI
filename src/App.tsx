@@ -28,10 +28,8 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 const particleImages = [b1oImage, ballImage, keyboardImage]
 
 const BALL_STOP = 1
-const DESKTOP_FIRST_SENSITIVITY = 0.00118
-const DESKTOP_SECOND_SENSITIVITY = 0.00058
-const TOUCH_FIRST_SENSITIVITY = 0.0018
-const TOUCH_SECOND_SENSITIVITY = 0.0009
+const DESKTOP_SENSITIVITY = 0.00088
+const TOUCH_SENSITIVITY = 0.0014
 const SNAP_DELAY = 280
 
 function App() {
@@ -68,15 +66,12 @@ function App() {
     }, SNAP_DELAY)
   }
 
-  const setTargetProgress = (delta: number, firstSensitivity: number, secondSensitivity: number) => {
+  const setTargetProgress = (delta: number, sensitivity: number) => {
     const direction = Math.sign(delta)
     if (!direction) return
 
-    const current = targetProgressRef.current
-    const sensitivity = current < BALL_STOP ? firstSensitivity : secondSensitivity
-
     targetProgressRef.current = clamp(
-      current + delta * sensitivity,
+      targetProgressRef.current + delta * sensitivity,
       0,
       2,
     )
@@ -148,11 +143,7 @@ function App() {
             ? event.deltaY * window.innerHeight
             : event.deltaY
 
-      setTargetProgress(
-        normalized,
-        DESKTOP_FIRST_SENSITIVITY,
-        DESKTOP_SECOND_SENSITIVITY,
-      )
+      setTargetProgress(normalized, DESKTOP_SENSITIVITY)
     }
 
     const onTouchStart = (event: TouchEvent) => {
@@ -170,11 +161,7 @@ function App() {
       if (!introLocked) return
 
       event.preventDefault()
-      setTargetProgress(
-        delta,
-        TOUCH_FIRST_SENSITIVITY,
-        TOUCH_SECOND_SENSITIVITY,
-      )
+      setTargetProgress(delta, TOUCH_SENSITIVITY)
     }
 
     const onTouchEnd = () => {
