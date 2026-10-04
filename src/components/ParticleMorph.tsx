@@ -332,8 +332,9 @@ export default function ParticleMorph({
         if (disposed) return
 
         const aspect = width / Math.max(1, height)
-        const scaleX = 2.0 * 1.18 * Math.min(1, aspect)
-        const scaleY = 2.0 * 1.18 * Math.min(1, 1 / aspect)
+        const fit = 1.18
+        const scaleX = 2.0 * fit / Math.max(1, aspect)
+        const scaleY = 2.0 * fit
 
         gl.clear(gl.COLOR_BUFFER_BIT)
         gl.useProgram(program)
