@@ -20,37 +20,40 @@ function smoothstep(x: number) {
 function selectEvenly(points: Point[], count: number): Point[] {
   if (points.length === 0) return []
   if (points.length === count) return points
+
   if (points.length > count) {
     const result: Point[] = []
     const step = points.length / count
+
     for (let i = 0; i < count; i += 1) {
       result.push(points[Math.min(points.length - 1, Math.floor(i * step))])
     }
+
     return result
   }
 
-  const result = Array.from({ length: count }, (_, i) => {
+  return Array.from({ length: count }, (_, i) => {
     const source = points[i % points.length]
     const cycle = Math.floor(i / points.length)
     const angle = cycle * 2.399963
     const radius = 0.00025 * (1 + (cycle % 4))
+
     return {
       x: source.x + Math.cos(angle) * radius,
       y: source.y + Math.sin(angle) * radius,
       strength: source.strength * (0.72 + ((cycle + i) % 5) * 0.05),
     }
   })
-  return result
 }
 
-function sampleImage(src: string, width = 720, height = 540): Promise<Point[]> {
+function sampleImage(src: string, size = 720): Promise<Point[]> {
   return new Promise((resolve, reject) => {
     const image = new Image()
 
     image.onload = () => {
       const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
+      canvas.width = size
+      canvas.height = size
 
       const ctx = canvas.getContext('2d', { willReadFrequently: true })
       if (!ctx) {
@@ -59,41 +62,38 @@ function sampleImage(src: string, width = 720, height = 540): Promise<Point[]> {
       }
 
       ctx.fillStyle = '#000'
-      ctx.fillRect(0, 0, width, height)
+      ctx.fillRect(0, 0, size, size)
 
-      const scale = Math.min(width / image.width, height / image.height)
+      // Keep each source's original aspect ratio.
+      // The square sampling surface prevents the globe from becoming vertically stretched.
+      const scale = Math.min(size / image.width, size / image.height)
       const drawWidth = image.width * scale
       const drawHeight = image.height * scale
 
       ctx.drawImage(
         image,
-        (width - drawWidth) / 2,
-        (height - drawHeight) / 2,
+        (size - drawWidth) / 2,
+        (size - drawHeight) / 2,
         drawWidth,
         drawHeight,
       )
 
-      const pixels = ctx.getImageData(0, 0, width, height).data
+      const pixels = ctx.getImageData(0, 0, size, size).data
       const candidates: Point[] = []
 
-      // The source files are already particle artwork.
-      // Keep the original particle distribution instead of reducing them to a tiny bitmap.
-      for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-          const index = (y * width + x) * 4
-          const r = pixels[index]
-          const g = pixels[index + 1]
-          const b = pixels[index + 2]
-          const brightness = (r + g + b) / (255 * 3)
+      for (let y = 0; y < size; y += 1) {
+        for (let x = 0; x < size; x += 1) {
+          const index = (y * size + x) * 4
+          const brightness =
+            (pixels[index] + pixels[index + 1] + pixels[index + 2]) / (255 * 3)
 
           if (brightness < 0.27) continue
 
-          // Prefer bright source pixels and avoid turning anti-aliased black edges into particles.
           const strength = clamp((brightness - 0.27) / 0.73, 0, 1)
 
           candidates.push({
-            x: x / width - 0.5,
-            y: y / height - 0.5,
+            x: x / size - 0.5,
+            y: y / size - 0.5,
             strength,
           })
         }
@@ -159,9 +159,7 @@ export default function ParticleMorph({
     }
 
     const render = () => {
-      if (disposed || targetsRef.current.length !== images.length) {
-        return
-      }
+      if (disposed || targetsRef.current.length !== images.length) return
 
       ctx.clearRect(0, 0, width, height)
 
@@ -181,21 +179,18 @@ export default function ParticleMorph({
         const a = from[i]
         const b = to[i]
 
-        // Same particle index travels directly from the exact source shape to the next shape.
         let nx = lerp(a.x, b.x, eased)
         let ny = lerp(a.y, b.y, eased)
 
-        // A restrained burst only during the actual transition.
         const travel = Math.sin(Math.PI * local)
         const angle = noise * Math.PI * 2 + time * (0.3 + noise * 0.7)
-        const burst = travel * (0.004 + noise * 0.014)
+        const burst = travel * (0.003 + noise * 0.009)
 
         nx += Math.cos(angle) * burst
         ny += Math.sin(angle) * burst
 
-        // Very small idle movement prevents the finished form from becoming completely static.
-        nx += Math.sin(time * 2 + noise * 18) * 0.00065
-        ny += Math.cos(time * 1.7 + noise * 15) * 0.00065
+        nx += Math.sin(time * 2 + noise * 18) * 0.00045
+        ny += Math.cos(time * 1.7 + noise * 15) * 0.00045
 
         const x = width * 0.5 + nx * scale
         const y = height * 0.5 + ny * scale
@@ -214,9 +209,7 @@ export default function ParticleMorph({
     const loadTargets = async () => {
       try {
         const candidates = await Promise.all(images.map((src) => sampleImage(src)))
-
-        const prepared = candidates.map((points) => selectEvenly(points, particleCount))
-        targetsRef.current = prepared
+        targetsRef.current = candidates.map((points) => selectEvenly(points, particleCount))
 
         if (!disposed) {
           render()
@@ -228,7 +221,6 @@ export default function ParticleMorph({
 
     resize()
     window.addEventListener('resize', resize)
-
     void loadTargets()
 
     return () => {
