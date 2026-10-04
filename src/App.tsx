@@ -28,9 +28,9 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 const particleImages = [b1oImage, ballImage, keyboardImage]
 
 const BALL_STOP = 1
-const DESKTOP_SENSITIVITY = 0.00105
-const TOUCH_SENSITIVITY = 0.0019
-const SNAP_DELAY = 135
+const DESKTOP_SENSITIVITY = 0.00082
+const TOUCH_SENSITIVITY = 0.00155
+const SNAP_DELAY = 220
 
 function App() {
   const [progress, setProgress] = useState(0)
@@ -88,7 +88,7 @@ function App() {
     const animate = () => {
       const current = renderedProgressRef.current
       const target = targetProgressRef.current
-      const next = current + (target - current) * 0.115
+      const next = current + (target - current) * 0.052
 
       renderedProgressRef.current = next
       setProgress(next)
