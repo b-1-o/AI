@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import AsciiRipple from './components/AsciiRipple'
 import b1oImage from '../assets/b1o.jpg'
@@ -33,7 +33,6 @@ const TOUCH_SENSITIVITY = 0.00155
 const SNAP_DELAY = 220
 
 function App() {
-  const [progress, setProgress] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
 
   const targetProgressRef = useRef(0)
@@ -41,6 +40,10 @@ function App() {
   const lastTouchY = useRef(0)
   const lastDirectionRef = useRef(0)
   const snapTimerRef = useRef<number | null>(null)
+
+  const introImageRef = useRef<HTMLDivElement | null>(null)
+  const globeCaptionRef = useRef<HTMLDivElement | null>(null)
+  const keyboardCaptionRef = useRef<HTMLDivElement | null>(null)
 
   const scheduleDirectionalSnap = (direction: number) => {
     lastDirectionRef.current = direction
@@ -76,23 +79,45 @@ function App() {
     scheduleDirectionalSnap(direction)
   }
 
-  const introText = useMemo(() => {
-    const globeOpacity = clamp(1 - Math.abs(progress - 1) / 0.32, 0, 1)
-    const keyboardOpacity = clamp((progress - 1.58) / 0.3, 0, 1)
-    return { globeOpacity, keyboardOpacity }
-  }, [progress])
-
   useEffect(() => {
     let frame = 0
+    let completed = false
 
     const animate = () => {
       const current = renderedProgressRef.current
       const target = targetProgressRef.current
       const next = current + (target - current) * 0.052
 
-      renderedProgressRef.current = next
-      setProgress(next)
-      setIsComplete(next >= 1.995)
+      renderedProgressRef.current = Math.abs(target - next) < 0.00008 ? target : next
+
+      const progress = renderedProgressRef.current
+
+      if (introImageRef.current) {
+        introImageRef.current.style.opacity = String(clamp(1 - progress / 0.92, 0, 1))
+        introImageRef.current.style.transform = 'scale(' + (1 + progress * 0.018) + ')'
+      }
+
+      const globeOpacity = clamp(1 - Math.abs(progress - 1) / 0.32, 0, 1)
+      const keyboardOpacity = clamp((progress - 1.58) / 0.3, 0, 1)
+
+      if (globeCaptionRef.current) {
+        globeCaptionRef.current.style.opacity = String(globeOpacity)
+        globeCaptionRef.current.style.transform =
+          'translate3d(0,' + (12 - globeOpacity * 12) + 'px,0)'
+      }
+
+      if (keyboardCaptionRef.current) {
+        keyboardCaptionRef.current.style.opacity = String(keyboardOpacity)
+        keyboardCaptionRef.current.style.transform =
+          'translate3d(0,' + (20 - keyboardOpacity * 20) + 'px,0)'
+      }
+
+      const nextCompleted = progress >= 1.995
+
+      if (nextCompleted !== completed) {
+        completed = nextCompleted
+        setIsComplete(nextCompleted)
+      }
 
       frame = requestAnimationFrame(animate)
     }
@@ -178,39 +203,34 @@ function App() {
     <div className="site">
       <section className="intro-stage" aria-label="b1o particle intro">
         <div
+          ref={introImageRef}
           className="intro-image"
           style={{
             backgroundImage: `linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.78) 70%, #050505 100%), url('${palatImage}')`,
-            opacity: clamp(1 - progress / 0.92, 0, 1),
-            transform: 'scale(' + (1 + progress * 0.018) + ')',
           }}
         />
         <div className="intro-vignette" />
 
         <ParticleMorph
           images={particleImages}
-          progress={progress}
+          progressRef={renderedProgressRef}
           particleDensity={1}
           className="particle-canvas"
         />
 
         <div className="intro-copy">
           <div
+            ref={globeCaptionRef}
             className="morph-caption morph-caption-globe"
-            style={{
-              opacity: introText.globeOpacity,
-              transform: 'translate3d(0,' + (12 - introText.globeOpacity * 12) + 'px,0)',
-            }}
+            style={{ opacity: 0 }}
           >
             <span>AI is not enemy, it's tool</span>
           </div>
 
           <div
+            ref={keyboardCaptionRef}
             className="morph-caption morph-caption-keyboard"
-            style={{
-              opacity: introText.keyboardOpacity,
-              transform: 'translate3d(0,' + (20 - introText.keyboardOpacity * 20) + 'px,0)',
-            }}
+            style={{ opacity: 0 }}
           >
             <span>I use AI as tool, and here's how I do it...</span>
           </div>
