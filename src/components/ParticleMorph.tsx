@@ -88,7 +88,7 @@ function sampleImage(src: string, size = 720): Promise<Point[]> {
 
           candidates.push({
             x: x / size - 0.5,
-            y: y / size - 0.5,
+            y: 0.5 - y / size,
             strength: clamp((brightness - 0.27) / 0.73, 0, 1),
           })
         }
