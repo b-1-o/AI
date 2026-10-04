@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 
-type Point = { x: number; y: number }
+type Point = { x: number; y: number; strength: number }
 
 type ParticleMorphProps = {
   images: string[]
@@ -12,52 +12,94 @@ type ParticleMorphProps = {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
-function smoothstep(edge0: number, edge1: number, x: number) {
-  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1)
+function smoothstep(x: number) {
+  const t = clamp(x, 0, 1)
   return t * t * (3 - 2 * t)
 }
 
-function sampleImage(src: string, sampleWidth = 260, sampleHeight = 160): Promise<Point[]> {
+function selectEvenly(points: Point[], count: number): Point[] {
+  if (points.length === 0) return []
+  if (points.length === count) return points
+  if (points.length > count) {
+    const result: Point[] = []
+    const step = points.length / count
+    for (let i = 0; i < count; i += 1) {
+      result.push(points[Math.min(points.length - 1, Math.floor(i * step))])
+    }
+    return result
+  }
+
+  const result = Array.from({ length: count }, (_, i) => {
+    const source = points[i % points.length]
+    const cycle = Math.floor(i / points.length)
+    const angle = cycle * 2.399963
+    const radius = 0.00025 * (1 + (cycle % 4))
+    return {
+      x: source.x + Math.cos(angle) * radius,
+      y: source.y + Math.sin(angle) * radius,
+      strength: source.strength * (0.72 + ((cycle + i) % 5) * 0.05),
+    }
+  })
+  return result
+}
+
+function sampleImage(src: string, width = 720, height = 540): Promise<Point[]> {
   return new Promise((resolve, reject) => {
     const image = new Image()
+
     image.onload = () => {
       const canvas = document.createElement('canvas')
-      canvas.width = sampleWidth
-      canvas.height = sampleHeight
+      canvas.width = width
+      canvas.height = height
+
       const ctx = canvas.getContext('2d', { willReadFrequently: true })
       if (!ctx) {
         reject(new Error('Canvas 2D context unavailable'))
         return
       }
 
-      ctx.clearRect(0, 0, sampleWidth, sampleHeight)
-      const scale = Math.min(sampleWidth / image.width, sampleHeight / image.height)
+      ctx.fillStyle = '#000'
+      ctx.fillRect(0, 0, width, height)
+
+      const scale = Math.min(width / image.width, height / image.height)
       const drawWidth = image.width * scale
       const drawHeight = image.height * scale
+
       ctx.drawImage(
         image,
-        (sampleWidth - drawWidth) / 2,
-        (sampleHeight - drawHeight) / 2,
+        (width - drawWidth) / 2,
+        (height - drawHeight) / 2,
         drawWidth,
         drawHeight,
       )
 
-      const pixels = ctx.getImageData(0, 0, sampleWidth, sampleHeight).data
-      const points: Point[] = []
+      const pixels = ctx.getImageData(0, 0, width, height).data
+      const candidates: Point[] = []
 
-      for (let y = 0; y < sampleHeight; y += 2) {
-        for (let x = 0; x < sampleWidth; x += 2) {
-          const i = (y * sampleWidth + x) * 4
-          const alpha = pixels[i + 3] / 255
-          const brightness = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / (255 * 3)
+      // The source files are already particle artwork.
+      // Keep the original particle distribution instead of reducing them to a tiny bitmap.
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          const index = (y * width + x) * 4
+          const r = pixels[index]
+          const g = pixels[index + 1]
+          const b = pixels[index + 2]
+          const brightness = (r + g + b) / (255 * 3)
 
-          if (alpha > 0.28 && brightness > 0.22) {
-            points.push({ x: x / sampleWidth - 0.5, y: y / sampleHeight - 0.5 })
-          }
+          if (brightness < 0.27) continue
+
+          // Prefer bright source pixels and avoid turning anti-aliased black edges into particles.
+          const strength = clamp((brightness - 0.27) / 0.73, 0, 1)
+
+          candidates.push({
+            x: x / width - 0.5,
+            y: y / height - 0.5,
+            strength,
+          })
         }
       }
 
-      resolve(points)
+      resolve(candidates)
     }
 
     image.onerror = () => reject(new Error('Failed to load particle source: ' + src))
@@ -72,21 +114,21 @@ export default function ParticleMorph({
   className = '',
 }: ParticleMorphProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const pointer = useRef({ x: 0, y: 0, active: false })
   const progressRef = useRef(progress)
-
-  useEffect(() => {
-    progressRef.current = progress
-  }, [progress])
+  const targetsRef = useRef<Point[][]>([])
 
   const seed = useMemo(
     () =>
-      Array.from({ length: 9000 }, (_, index) => {
+      Array.from({ length: 12000 }, (_, index) => {
         const value = Math.sin(index * 12.9898) * 43758.5453
         return value - Math.floor(value)
       }),
     [],
   )
+
+  useEffect(() => {
+    progressRef.current = progress
+  }, [progress])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -100,13 +142,15 @@ export default function ParticleMorph({
     let width = 0
     let height = 0
     let dpr = 1
-    const targets: Point[][] = []
-    const particleCount = Math.round((window.innerWidth < 760 ? 2200 : 4800) * particleDensity)
+
+    const particleCount = Math.round(
+      (window.innerWidth < 760 ? 5000 : 8500) * particleDensity,
+    )
 
     const resize = () => {
       width = window.innerWidth
       height = window.innerHeight
-      dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 760 ? 1.25 : 1.55)
+      dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 760 ? 1.15 : 1.5)
       canvas.width = Math.floor(width * dpr)
       canvas.height = Math.floor(height * dpr)
       canvas.style.width = '100%'
@@ -114,72 +158,52 @@ export default function ParticleMorph({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
 
-    const onPointerMove = (event: PointerEvent) => {
-      pointer.current = { x: event.clientX, y: event.clientY, active: true }
-    }
-
-    const onPointerLeave = () => {
-      pointer.current.active = false
-    }
-
     const render = () => {
-      if (disposed || targets.length < images.length) return
+      if (disposed || targetsRef.current.length !== images.length) {
+        return
+      }
 
       ctx.clearRect(0, 0, width, height)
 
       const p = clamp(progressRef.current, 0, images.length - 1)
       const segment = Math.min(images.length - 2, Math.floor(p))
       const local = p - segment
-      const t = smoothstep(0, 1, local)
-      const scale = Math.min(width, height) * 1.16
-      const idleTime = performance.now() * 0.0004
-      const pointerRadius = Math.max(95, Math.min(width, height) * 0.12)
+      const eased = smoothstep(local)
+
+      const scale = Math.min(width, height) * 1.18
+      const time = performance.now() * 0.00035
+
+      const from = targetsRef.current[segment]
+      const to = targetsRef.current[segment + 1]
 
       for (let i = 0; i < particleCount; i += 1) {
         const noise = seed[i % seed.length]
-        const a = targets[segment][i % targets[segment].length]
-        const b = targets[segment + 1][i % targets[segment + 1].length]
+        const a = from[i]
+        const b = to[i]
 
-        let nx = lerp(a.x, b.x, t)
-        let ny = lerp(a.y, b.y, t)
+        // Same particle index travels directly from the exact source shape to the next shape.
+        let nx = lerp(a.x, b.x, eased)
+        let ny = lerp(a.y, b.y, eased)
 
+        // A restrained burst only during the actual transition.
         const travel = Math.sin(Math.PI * local)
-        const orbit = noise * Math.PI * 2 + idleTime * (0.3 + noise * 0.7)
-        const radius = travel * (8 + noise * 26)
+        const angle = noise * Math.PI * 2 + time * (0.3 + noise * 0.7)
+        const burst = travel * (0.004 + noise * 0.014)
 
-        nx += Math.cos(orbit) * radius / scale
-        ny += Math.sin(orbit) * radius / scale
+        nx += Math.cos(angle) * burst
+        ny += Math.sin(angle) * burst
 
-        nx += Math.sin(noise * 21 + idleTime * 1.5) * 0.0018
-        ny += Math.cos(noise * 17 + idleTime * 1.1) * 0.0018
+        // Very small idle movement prevents the finished form from becoming completely static.
+        nx += Math.sin(time * 2 + noise * 18) * 0.00065
+        ny += Math.cos(time * 1.7 + noise * 15) * 0.00065
 
-        let x = width * 0.5 + nx * scale
-        let y = height * 0.5 + ny * scale
+        const x = width * 0.5 + nx * scale
+        const y = height * 0.5 + ny * scale
 
-        if (p > 0.72 && p < 1.28) {
-          const angle = Math.sin((p - 0.72) * 4.2) * 0.08
-          const dx = x - width * 0.5
-          const dy = y - height * 0.5
-          x = width * 0.5 + dx * Math.cos(angle) - dy * Math.sin(angle)
-          y = height * 0.5 + dx * Math.sin(angle) + dy * Math.cos(angle)
-        }
-
-        if (pointer.current.active) {
-          const dx = x - pointer.current.x
-          const dy = y - pointer.current.y
-          const distance = Math.hypot(dx, dy)
-
-          if (distance < pointerRadius && distance > 0.001) {
-            const strength = Math.pow(1 - distance / pointerRadius, 2) * 18
-            x += (dx / distance) * strength
-            y += (dy / distance) * strength
-          }
-        }
-
-        ctx.globalAlpha = 0.34 + 0.5 * (0.5 + 0.5 * Math.sin(noise * 25 + idleTime * 2.8))
+        ctx.globalAlpha = 0.62 + Math.min(0.38, (a.strength + b.strength) * 0.22)
         ctx.fillStyle = '#fff'
         ctx.beginPath()
-        ctx.arc(x, y, window.innerWidth < 760 ? 1.0 : 1.25, 0, Math.PI * 2)
+        ctx.arc(x, y, window.innerWidth < 760 ? 0.82 : 1.02, 0, Math.PI * 2)
         ctx.fill()
       }
 
@@ -189,9 +213,12 @@ export default function ParticleMorph({
 
     const loadTargets = async () => {
       try {
-        const loaded = await Promise.all(images.map((src) => sampleImage(src)))
+        const candidates = await Promise.all(images.map((src) => sampleImage(src)))
+
+        const prepared = candidates.map((points) => selectEvenly(points, particleCount))
+        targetsRef.current = prepared
+
         if (!disposed) {
-          targets.push(...loaded)
           render()
         }
       } catch (error) {
@@ -201,16 +228,13 @@ export default function ParticleMorph({
 
     resize()
     window.addEventListener('resize', resize)
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerleave', onPointerLeave)
+
     void loadTargets()
 
     return () => {
       disposed = true
       cancelAnimationFrame(frame)
       window.removeEventListener('resize', resize)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerleave', onPointerLeave)
     }
   }, [images, particleDensity, seed])
 
