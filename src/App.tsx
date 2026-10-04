@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import AsciiRipple from './components/AsciiRipple'
-import RotatingBall from './components/RotatingBall'
 import b1oImage from '../assets/b1o.jpg'
 import ballImage from '../assets/ball.jpg'
 import keyboardImage from '../assets/keyboard.jpg'
@@ -112,17 +111,12 @@ function App() {
         <div className="intro-vignette" />
 
         <ParticleMorph
-          images={[b1oImage, ballImage, keyboardImage]}
+          images={particleImages}
           progress={progress}
           particleDensity={1}
           className="particle-canvas"
         />
 
-        <RotatingBall
-          src={ballImage}
-          active={progress > 0.76 && progress < 1.34}
-          opacity={clamp(1 - Math.abs(progress - 1) / 0.22, 0, 1)}
-        />
 
         <div className="intro-copy">
           <div
