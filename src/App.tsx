@@ -27,37 +27,93 @@ const tools = [
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
 const particleImages = [b1oImage, ballImage, keyboardImage]
 
+const BALL_STOP = 1
+const BALL_RELEASE_DELTA = 110
+const DESKTOP_SENSITIVITY = 0.00105
+const TOUCH_SENSITIVITY = 0.0019
+
 function App() {
   const [progress, setProgress] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
-  const progressRef = useRef(0)
+
+  const targetProgressRef = useRef(0)
+  const renderedProgressRef = useRef(0)
   const lastTouchY = useRef(0)
-  useEffect(() => {
-    progressRef.current = progress
-  }, [progress])
+  const ballReleaseRef = useRef(0)
+
+  const setTargetProgress = (delta: number, sensitivity: number) => {
+    let target = targetProgressRef.current
+    const direction = Math.sign(delta)
+
+    if (!direction) return
+
+    if (direction > 0) {
+      ballReleaseRef.current = target >= BALL_STOP - 0.003 ? ballReleaseRef.current + delta : 0
+
+      if (target < BALL_STOP && target + delta * sensitivity >= BALL_STOP) {
+        target = BALL_STOP
+        ballReleaseRef.current = 0
+      } else if (target >= BALL_STOP - 0.003 && target < 1.001) {
+        if (ballReleaseRef.current < BALL_RELEASE_DELTA) {
+          target = BALL_STOP
+        } else {
+          const remaining = ballReleaseRef.current - BALL_RELEASE_DELTA
+          target = BALL_STOP + remaining * sensitivity
+        }
+      } else {
+        target += delta * sensitivity
+      }
+    } else {
+      ballReleaseRef.current = 0
+      target += delta * sensitivity
+    }
+
+    targetProgressRef.current = clamp(target, 0, 2)
+  }
 
   const introText = useMemo(() => {
-    const globeOpacity = clamp(1 - Math.abs(progress - 1) / 0.34, 0, 1)
-    const keyboardOpacity = clamp((progress - 1.62) / 0.28, 0, 1)
+    const globeOpacity = clamp(1 - Math.abs(progress - 1) / 0.32, 0, 1)
+    const keyboardOpacity = clamp((progress - 1.58) / 0.3, 0, 1)
     return { globeOpacity, keyboardOpacity }
   }, [progress])
 
-  const setMorphProgress = (value: number) => {
-    const next = clamp(value, 0, 2)
-    progressRef.current = next
-    setProgress(next)
-    setIsComplete(next >= 1.999)
-  }
+  useEffect(() => {
+    let frame = 0
+
+    const animate = () => {
+      const current = renderedProgressRef.current
+      const target = targetProgressRef.current
+      const next = current + (target - current) * 0.115
+
+      renderedProgressRef.current = next
+      setProgress(next)
+      setIsComplete(next >= 1.995)
+
+      frame = requestAnimationFrame(animate)
+    }
+
+    frame = requestAnimationFrame(animate)
+
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   useEffect(() => {
     const onWheel = (event: WheelEvent) => {
       const atTop = window.scrollY <= 2
-      const needsIntroControl = !isComplete || (atTop && event.deltaY < 0)
-      if (!needsIntroControl) return
+      const introLocked = !isComplete || (atTop && event.deltaY < 0)
+
+      if (!introLocked) return
 
       event.preventDefault()
-      const sensitivity = window.innerWidth < 760 ? 0.00195 : 0.00135
-      setMorphProgress(progressRef.current + event.deltaY * sensitivity)
+
+      const normalized =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? event.deltaY * 16
+          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? event.deltaY * window.innerHeight
+            : event.deltaY
+
+      setTargetProgress(normalized, DESKTOP_SENSITIVITY)
     }
 
     const onTouchStart = (event: TouchEvent) => {
@@ -66,15 +122,16 @@ function App() {
 
     const onTouchMove = (event: TouchEvent) => {
       const currentY = event.touches[0]?.clientY ?? lastTouchY.current
-      const deltaY = lastTouchY.current - currentY
+      const delta = lastTouchY.current - currentY
       lastTouchY.current = currentY
 
       const atTop = window.scrollY <= 2
-      const needsIntroControl = !isComplete || (atTop && deltaY < 0)
-      if (!needsIntroControl) return
+      const introLocked = !isComplete || (atTop && delta < 0)
+
+      if (!introLocked) return
 
       event.preventDefault()
-      setMorphProgress(progressRef.current + deltaY * (window.innerWidth < 760 ? 0.0042 : 0.0024))
+      setTargetProgress(delta, TOUCH_SENSITIVITY)
     }
 
     window.addEventListener('wheel', onWheel, { passive: false })
@@ -118,7 +175,6 @@ function App() {
           className="particle-canvas"
         />
 
-
         <div className="intro-copy">
           <div
             className="morph-caption morph-caption-globe"
@@ -145,11 +201,6 @@ function App() {
           <span className="intro-index">01 / 03</span>
           <span className="intro-hint">{isComplete ? 'SCROLL TO ENTER' : 'SCROLL TO MORPH'}</span>
         </div>
-
-        <div className="intro-progress">
-          <span style={{ transform: 'scaleX(' + progress / 2 + ')' }} />
-        </div>
-
       </section>
 
       <main className="content">
