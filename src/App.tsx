@@ -28,9 +28,11 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 const particleImages = [b1oImage, ballImage, keyboardImage]
 
 const BALL_STOP = 1
-const DESKTOP_SENSITIVITY = 0.00082
-const TOUCH_SENSITIVITY = 0.00155
-const SNAP_DELAY = 220
+const DESKTOP_FIRST_SENSITIVITY = 0.00118
+const DESKTOP_SECOND_SENSITIVITY = 0.00058
+const TOUCH_FIRST_SENSITIVITY = 0.0018
+const TOUCH_SECOND_SENSITIVITY = 0.0009
+const SNAP_DELAY = 280
 
 function App() {
   const [isComplete, setIsComplete] = useState(false)
@@ -66,12 +68,15 @@ function App() {
     }, SNAP_DELAY)
   }
 
-  const setTargetProgress = (delta: number, sensitivity: number) => {
+  const setTargetProgress = (delta: number, firstSensitivity: number, secondSensitivity: number) => {
     const direction = Math.sign(delta)
     if (!direction) return
 
+    const current = targetProgressRef.current
+    const sensitivity = current < BALL_STOP ? firstSensitivity : secondSensitivity
+
     targetProgressRef.current = clamp(
-      targetProgressRef.current + delta * sensitivity,
+      current + delta * sensitivity,
       0,
       2,
     )
@@ -86,7 +91,7 @@ function App() {
     const animate = () => {
       const current = renderedProgressRef.current
       const target = targetProgressRef.current
-      const next = current + (target - current) * 0.052
+      const next = current + (target - current) * 0.075
 
       renderedProgressRef.current = Math.abs(target - next) < 0.00008 ? target : next
 
@@ -143,7 +148,11 @@ function App() {
             ? event.deltaY * window.innerHeight
             : event.deltaY
 
-      setTargetProgress(normalized, DESKTOP_SENSITIVITY)
+      setTargetProgress(
+        normalized,
+        DESKTOP_FIRST_SENSITIVITY,
+        DESKTOP_SECOND_SENSITIVITY,
+      )
     }
 
     const onTouchStart = (event: TouchEvent) => {
@@ -161,7 +170,11 @@ function App() {
       if (!introLocked) return
 
       event.preventDefault()
-      setTargetProgress(delta, TOUCH_SENSITIVITY)
+      setTargetProgress(
+        delta,
+        TOUCH_FIRST_SENSITIVITY,
+        TOUCH_SECOND_SENSITIVITY,
+      )
     }
 
     const onTouchEnd = () => {
