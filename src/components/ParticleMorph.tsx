@@ -143,13 +143,9 @@ function createProgram(gl: WebGLRenderingContext, vertexSource: string, fragment
 
 const vertexShader = [
   'precision mediump float;',
-  'attribute vec2 aB1o;',
-  'attribute vec2 aBall;',
-  'attribute vec2 aKeyboard;',
-  'attribute float sB1o;',
-  'attribute float sBall;',
-  'attribute float sKeyboard;',
-  'attribute float aSeed;',
+  'attribute vec4 aB1o;',
+  'attribute vec4 aBall;',
+  'attribute vec4 aKeyboard;',
   'uniform float uProgress;',
   'uniform float uTime;',
   'uniform vec2 uScale;',
@@ -186,8 +182,8 @@ const vertexShader = [
   '  float t = quintic(local);',
   '  vec2 pos = mix(from, to, t);',
   '  float travel = sin(3.14159265 * local);',
-  '  float angle = aSeed * 6.2831853 + uTime * (0.30 + aSeed * 0.70);',
-  '  float burst = travel * (0.003 + aSeed * 0.009);',
+  '  float angle = aKeyboard.w * 6.2831853 + uTime * (0.30 + aKeyboard.w * 0.70);',
+  '  float burst = travel * (0.003 + aKeyboard.w * 0.009);',
   '',
   '  pos += vec2(cos(angle), sin(angle)) * burst;',
   '  pos += vec2(',
@@ -269,29 +265,30 @@ export default function ParticleMorph({
       if (disposed) return () => {}
 
       const prepared = loaded.map((points) => selectEvenly(points, particleCount))
-      const b1o = new Float32Array(particleCount * 2)
-      const ball = new Float32Array(particleCount * 2)
-      const keyboard = new Float32Array(particleCount * 2)
-      const sB1o = new Float32Array(particleCount)
-      const sBall = new Float32Array(particleCount)
-      const sKeyboard = new Float32Array(particleCount)
-      const seeds = new Float32Array(particleCount)
+      const b1o = new Float32Array(particleCount * 4)
+      const ball = new Float32Array(particleCount * 4)
+      const keyboard = new Float32Array(particleCount * 4)
 
       for (let i = 0; i < particleCount; i += 1) {
-        const offset = i * 2
-        b1o[offset] = prepared[0][i].x
-        b1o[offset + 1] = prepared[0][i].y
-        ball[offset] = prepared[1][i].x
-        ball[offset + 1] = prepared[1][i].y
-        keyboard[offset] = prepared[2][i].x
-        keyboard[offset + 1] = prepared[2][i].y
+        const offset = i * 4
+        const b1 = prepared[0][i]
+        const ba = prepared[1][i]
+        const kb = prepared[2][i]
 
-        sB1o[i] = prepared[0][i].strength
-        sBall[i] = prepared[1][i].strength
-        sKeyboard[i] = prepared[2][i].strength
+        b1o[offset] = b1.x
+        b1o[offset + 1] = b1.y
+        b1o[offset + 2] = b1.strength
+
+        ball[offset] = ba.x
+        ball[offset + 1] = ba.y
+        ball[offset + 2] = ba.strength
+
+        keyboard[offset] = kb.x
+        keyboard[offset + 1] = kb.y
+        keyboard[offset + 2] = kb.strength
 
         const value = Math.sin((i + 1) * 12.9898) * 43758.5453
-        seeds[i] = value - Math.floor(value)
+        keyboard[offset + 3] = value - Math.floor(value)
       }
 
       const program = createProgram(gl, vertexShader, fragmentShader)
@@ -303,13 +300,9 @@ export default function ParticleMorph({
       const uniformPixelRatio = gl.getUniformLocation(program, 'uPixelRatio')
 
       const buffers = [
-        setAttribute(program, 'aB1o', b1o, 2),
-        setAttribute(program, 'aBall', ball, 2),
-        setAttribute(program, 'aKeyboard', keyboard, 2),
-        setAttribute(program, 'sB1o', sB1o, 1),
-        setAttribute(program, 'sBall', sBall, 1),
-        setAttribute(program, 'sKeyboard', sKeyboard, 1),
-        setAttribute(program, 'aSeed', seeds, 1),
+        setAttribute(program, 'aB1o', b1o, 4),
+        setAttribute(program, 'aBall', ball, 4),
+        setAttribute(program, 'aKeyboard', keyboard, 4),
       ]
 
       gl.enable(gl.BLEND)
@@ -321,7 +314,7 @@ export default function ParticleMorph({
         height = window.innerHeight
         pixelRatio = Math.min(
           window.devicePixelRatio || 1,
-          window.innerWidth < 760 ? 1.15 : 1.25,
+          window.innerWidth < 760 ? 1.0 : 1.0,
         )
 
         canvas.width = Math.floor(width * pixelRatio)
