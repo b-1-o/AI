@@ -28,6 +28,9 @@ export default function AsciiRipple() {
       canvas.width = Math.floor(width * dpr)
       canvas.height = Math.floor(height * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, monospace'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = '#ffffff'
 
       const next: Array<{ x: number; y: number; char: string }> = []
       let cursor = 0
@@ -70,15 +73,14 @@ export default function AsciiRipple() {
       }
 
       ctx.clearRect(0, 0, width, height)
-      ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, monospace'
-      ctx.textBaseline = 'middle'
-      ctx.fillStyle = '#ffffff'
 
       for (const point of charPositions) {
         let wave = 0
 
         for (const ripple of ripples.current) {
-          const distance = Math.hypot(point.x - ripple.x, point.y - ripple.y)
+          const dx = point.x - ripple.x
+          const dy = point.y - ripple.y
+          const distance = Math.sqrt(dx * dx + dy * dy)
           wave +=
             Math.sin(distance * 0.075 - time * 0.004) *
             Math.exp(-distance / 125) *
@@ -95,9 +97,13 @@ export default function AsciiRipple() {
         }
       }
 
-      ripples.current = ripples.current
-        .map((ripple) => ({ ...ripple, strength: ripple.strength * 0.965 }))
-        .filter((ripple) => ripple.strength > 0.02)
+      for (let i = ripples.current.length - 1; i >= 0; i -= 1) {
+        const ripple = ripples.current[i]
+        ripple.strength *= 0.965
+        if (ripple.strength <= 0.02) {
+          ripples.current.splice(i, 1)
+        }
+      }
 
       ctx.globalAlpha = 1
       frame = requestAnimationFrame(draw)
