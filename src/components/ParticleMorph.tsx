@@ -14,7 +14,8 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
 function smoothstep(x: number) {
   const t = clamp(x, 0, 1)
-  return t * t * (3 - 2 * t)
+  // Quintic easing keeps the particle field gentle at both ends of every morph.
+  return t * t * t * (t * (t * 6 - 15) + 10)
 }
 
 function selectEvenly(points: Point[], count: number): Point[] {
