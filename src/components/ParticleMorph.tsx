@@ -142,6 +142,7 @@ function createProgram(gl: WebGLRenderingContext, vertexSource: string, fragment
 }
 
 const vertexShader = [
+  'precision mediump float;',
   'attribute vec2 aB1o;',
   'attribute vec2 aBall;',
   'attribute vec2 aKeyboard;',
@@ -249,21 +250,6 @@ export default function ParticleMorph({
       (window.innerWidth < 760 ? 5000 : 8500) * particleDensity,
     )
 
-    const resize = () => {
-      width = window.innerWidth
-      height = window.innerHeight
-      pixelRatio = Math.min(
-        window.devicePixelRatio || 1,
-        window.innerWidth < 760 ? 1.15 : 1.5,
-      )
-
-      canvas.width = Math.floor(width * pixelRatio)
-      canvas.height = Math.floor(height * pixelRatio)
-      canvas.style.width = '100%'
-      canvas.style.height = '100%'
-      gl.viewport(0, 0, canvas.width, canvas.height)
-    }
-
     const setAttribute = (program: WebGLProgram, name: string, values: Float32Array, size: number) => {
       const location = gl.getAttribLocation(program, name)
       const buffer = gl.createBuffer()
@@ -316,44 +302,100 @@ export default function ParticleMorph({
       const uniformScale = gl.getUniformLocation(program, 'uScale')
       const uniformPixelRatio = gl.getUniformLocation(program, 'uPixelRatio')
 
-      setAttribute(program, 'aB1o', b1o, 2)
-      setAttribute(program, 'aBall', ball, 2)
-      setAttribute(program, 'aKeyboard', keyboard, 2)
-      setAttribute(program, 'sB1o', sB1o, 1)
-      setAttribute(program, 'sBall', sBall, 1)
-      setAttribute(program, 'sKeyboard', sKeyboard, 1)
-      setAttribute(program, 'aSeed', seeds, 1)
+      const buffers = [
+        setAttribute(program, 'aB1o', b1o, 2),
+        setAttribute(program, 'aBall', ball, 2),
+        setAttribute(program, 'aKeyboard', keyboard, 2),
+        setAttribute(program, 'sB1o', sB1o, 1),
+        setAttribute(program, 'sBall', sBall, 1),
+        setAttribute(program, 'sKeyboard', sKeyboard, 1),
+        setAttribute(program, 'aSeed', seeds, 1),
+      ]
 
       gl.enable(gl.BLEND)
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
       gl.clearColor(0, 0, 0, 0)
 
-      const render = (time: number) => {
-        if (disposed) return
+      const resize = () => {
+        width = window.innerWidth
+        height = window.innerHeight
+        pixelRatio = Math.min(
+          window.devicePixelRatio || 1,
+          window.innerWidth < 760 ? 1.15 : 1.25,
+        )
+
+        canvas.width = Math.floor(width * pixelRatio)
+        canvas.height = Math.floor(height * pixelRatio)
+        canvas.style.width = '100%'
+        canvas.style.height = '100%'
+        gl.viewport(0, 0, canvas.width, canvas.height)
 
         const aspect = width / Math.max(1, height)
         const fit = 1.18
         const scaleX = 2.0 * fit / Math.max(1, aspect)
         const scaleY = 2.0 * fit
 
-        gl.clear(gl.COLOR_BUFFER_BIT)
-        gl.useProgram(program)
-        gl.uniform1f(uniformProgress, progressRef.current)
-        gl.uniform1f(uniformTime, time * 0.001)
         gl.uniform2f(uniformScale, scaleX, scaleY)
         gl.uniform1f(uniformPixelRatio, pixelRatio)
+      }
+
+      let running = false
+
+      const requestRender = () => {
+        if (!disposed && running && !document.hidden && frame === 0) {
+          frame = requestAnimationFrame(render)
+        }
+      }
+
+      const render = (time: number) => {
+        frame = 0
+        if (disposed || !running || document.hidden) return
+
+        gl.clear(gl.COLOR_BUFFER_BIT)
+        gl.uniform1f(uniformProgress, progressRef.current)
+        gl.uniform1f(uniformTime, time * 0.001)
         gl.drawArrays(gl.POINTS, 0, particleCount)
 
-        frame = requestAnimationFrame(render)
+        requestRender()
+      }
+
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          running = Boolean(entry?.isIntersecting)
+          if (running) requestRender()
+          else if (frame !== 0) {
+            cancelAnimationFrame(frame)
+            frame = 0
+          }
+        },
+        { rootMargin: '64px 0px' },
+      )
+
+      const onVisibilityChange = () => {
+        if (document.hidden) {
+          if (frame !== 0) {
+            cancelAnimationFrame(frame)
+            frame = 0
+          }
+          return
+        }
+
+        requestRender()
       }
 
       resize()
+      observer.observe(canvas)
+      document.addEventListener('visibilitychange', onVisibilityChange)
       window.addEventListener('resize', resize)
-      frame = requestAnimationFrame(render)
+      running = true
+      requestRender()
 
       return () => {
         cancelAnimationFrame(frame)
+        observer.disconnect()
+        document.removeEventListener('visibilitychange', onVisibilityChange)
         window.removeEventListener('resize', resize)
+        for (const buffer of buffers) gl.deleteBuffer(buffer)
         gl.deleteProgram(program)
       }
     }
