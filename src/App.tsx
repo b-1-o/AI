@@ -41,6 +41,7 @@ function App() {
   const lastTouchY = useRef(0)
   const lastDirectionRef = useRef(0)
   const snapTimerRef = useRef<number | null>(null)
+  const wakeAnimationRef = useRef<(() => void) | null>(null)
 
   const introImageRef = useRef<HTMLDivElement | null>(null)
   const globeCaptionRef = useRef<HTMLDivElement | null>(null)
@@ -64,6 +65,7 @@ function App() {
       }
 
       snapTimerRef.current = null
+      wakeAnimationRef.current?.()
     }, SNAP_DELAY)
   }
 
@@ -78,6 +80,7 @@ function App() {
     )
 
     scheduleDirectionalSnap(direction)
+    wakeAnimationRef.current?.()
   }
 
   useEffect(() => {
@@ -129,12 +132,26 @@ function App() {
         setIsComplete(nextCompleted)
       }
 
-      frame = requestAnimationFrame(animate)
+      const settled = Math.abs(target - next) < 0.0001
+
+      if (!settled) {
+        frame = requestAnimationFrame(animate)
+      } else {
+        frame = 0
+      }
     }
 
-    frame = requestAnimationFrame(animate)
+    wakeAnimationRef.current = () => {
+      if (frame === 0) frame = requestAnimationFrame(animate)
+    }
 
-    return () => cancelAnimationFrame(frame)
+    wakeAnimationRef.current()
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame)
+      frame = 0
+      wakeAnimationRef.current = null
+    }
   }, [])
 
   useEffect(() => {
