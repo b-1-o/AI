@@ -28,9 +28,9 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 const particleImages = [b1oImage, ballImage, keyboardImage]
 
 const BALL_STOP = 1
-const BALL_RELEASE_DELTA = 110
 const DESKTOP_SENSITIVITY = 0.00105
 const TOUCH_SENSITIVITY = 0.0019
+const SNAP_DELAY = 135
 
 function App() {
   const [progress, setProgress] = useState(0)
@@ -39,36 +39,41 @@ function App() {
   const targetProgressRef = useRef(0)
   const renderedProgressRef = useRef(0)
   const lastTouchY = useRef(0)
-  const ballReleaseRef = useRef(0)
+  const lastDirectionRef = useRef(0)
+  const snapTimerRef = useRef<number | null>(null)
 
-  const setTargetProgress = (delta: number, sensitivity: number) => {
-    let target = targetProgressRef.current
-    const direction = Math.sign(delta)
+  const scheduleDirectionalSnap = (direction: number) => {
+    lastDirectionRef.current = direction
 
-    if (!direction) return
-
-    if (direction > 0) {
-      ballReleaseRef.current = target >= BALL_STOP - 0.003 ? ballReleaseRef.current + delta : 0
-
-      if (target < BALL_STOP && target + delta * sensitivity >= BALL_STOP) {
-        target = BALL_STOP
-        ballReleaseRef.current = 0
-      } else if (target >= BALL_STOP - 0.003 && target < 1.001) {
-        if (ballReleaseRef.current < BALL_RELEASE_DELTA) {
-          target = BALL_STOP
-        } else {
-          const remaining = ballReleaseRef.current - BALL_RELEASE_DELTA
-          target = BALL_STOP + remaining * sensitivity
-        }
-      } else {
-        target += delta * sensitivity
-      }
-    } else {
-      ballReleaseRef.current = 0
-      target += delta * sensitivity
+    if (snapTimerRef.current !== null) {
+      window.clearTimeout(snapTimerRef.current)
     }
 
-    targetProgressRef.current = clamp(target, 0, 2)
+    snapTimerRef.current = window.setTimeout(() => {
+      const current = targetProgressRef.current
+      const dir = lastDirectionRef.current
+
+      if (dir > 0) {
+        targetProgressRef.current = current < BALL_STOP ? BALL_STOP : 2
+      } else if (dir < 0) {
+        targetProgressRef.current = current > BALL_STOP ? BALL_STOP : 0
+      }
+
+      snapTimerRef.current = null
+    }, SNAP_DELAY)
+  }
+
+  const setTargetProgress = (delta: number, sensitivity: number) => {
+    const direction = Math.sign(delta)
+    if (!direction) return
+
+    targetProgressRef.current = clamp(
+      targetProgressRef.current + delta * sensitivity,
+      0,
+      2,
+    )
+
+    scheduleDirectionalSnap(direction)
   }
 
   const introText = useMemo(() => {
@@ -134,14 +139,28 @@ function App() {
       setTargetProgress(delta, TOUCH_SENSITIVITY)
     }
 
+    const onTouchEnd = () => {
+      if (lastDirectionRef.current !== 0) {
+        scheduleDirectionalSnap(lastDirectionRef.current)
+      }
+    }
+
     window.addEventListener('wheel', onWheel, { passive: false })
     window.addEventListener('touchstart', onTouchStart, { passive: true })
     window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchend', onTouchEnd, { passive: true })
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true })
 
     return () => {
       window.removeEventListener('wheel', onWheel)
       window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
+
+      if (snapTimerRef.current !== null) {
+        window.clearTimeout(snapTimerRef.current)
+      }
     }
   }, [isComplete])
 
