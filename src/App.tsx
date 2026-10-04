@@ -28,8 +28,9 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 const particleImages = [b1oImage, ballImage, keyboardImage]
 
 const BALL_STOP = 1
-const DESKTOP_SENSITIVITY = 0.00088
-const TOUCH_SENSITIVITY = 0.0014
+const DESKTOP_SENSITIVITY = 0.00105
+const TOUCH_SENSITIVITY = 0.00155
+const MORPH_SPEED = 1.3
 const SNAP_DELAY = 280
 
 function App() {
@@ -82,13 +83,22 @@ function App() {
   useEffect(() => {
     let frame = 0
     let completed = false
+    let previousTime = performance.now()
 
-    const animate = () => {
+    const animate = (time: number) => {
       const current = renderedProgressRef.current
       const target = targetProgressRef.current
-      const next = current + (target - current) * 0.075
+      const deltaSeconds = Math.min((time - previousTime) / 1000, 0.05)
+      previousTime = time
 
-      renderedProgressRef.current = Math.abs(target - next) < 0.00008 ? target : next
+      const maxStep = MORPH_SPEED * deltaSeconds
+      const distance = target - current
+      const next =
+        Math.abs(distance) <= maxStep
+          ? target
+          : current + Math.sign(distance) * maxStep
+
+      renderedProgressRef.current = next
 
       const progress = renderedProgressRef.current
 
