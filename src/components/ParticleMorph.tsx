@@ -179,8 +179,16 @@ export default function ParticleMorph({
         const a = from[i]
         const b = to[i]
 
-        let nx = lerp(a.x, b.x, eased)
-        let ny = lerp(a.y, b.y, eased)
+        const fromScale = segment === 1 ? 0.80 : 1
+        const toScale = segment === 0 ? 0.80 : 1
+
+        const startX = a.x * fromScale
+        const startY = a.y * fromScale
+        const endX = b.x * toScale
+        const endY = b.y * toScale
+
+        let nx = lerp(startX, endX, eased)
+        let ny = lerp(startY, endY, eased)
 
         const travel = Math.sin(Math.PI * local)
         const angle = noise * Math.PI * 2 + time * (0.3 + noise * 0.7)
