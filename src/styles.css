@@ -345,15 +345,6 @@ body, canvas { overscroll-behavior: none; }
   .project-stack { display: none; }
   .tool-row { grid-template-columns: 92px 1fr; gap: 16px; }
   .contact-row { flex-wrap: wrap; gap: 18px; }
-  .typing-hands { width: 86vw; top: 59%; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .typing-hands .hand,
-  .project {
-    animation: none !important;
-    transition: none !important;
-  }
 }
 
 
