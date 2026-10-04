@@ -411,7 +411,6 @@ export default function ParticleMorph({
       disposed = true
       stopRenderer()
       if (frame) cancelAnimationFrame(frame)
-      window.removeEventListener('resize', resize)
     }
   }, [images, particleDensity, progressRef])
 
