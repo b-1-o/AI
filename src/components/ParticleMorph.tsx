@@ -1,20 +1,18 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
 type Point = { x: number; y: number; strength: number }
 
 type ParticleMorphProps = {
   images: string[]
-  progress: number
+  progressRef: { current: number }
   particleDensity?: number
   className?: string
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
 function smoothstep(x: number) {
   const t = clamp(x, 0, 1)
-  // Quintic easing keeps the particle field gentle at both ends of every morph.
   return t * t * t * (t * (t * 6 - 15) + 10)
 }
 
@@ -23,11 +21,11 @@ function selectEvenly(points: Point[], count: number): Point[] {
   if (points.length === count) return points
 
   if (points.length > count) {
-    const result: Point[] = []
+    const result: Point[] = new Array(count)
     const step = points.length / count
 
     for (let i = 0; i < count; i += 1) {
-      result.push(points[Math.min(points.length - 1, Math.floor(i * step))])
+      result[i] = points[Math.min(points.length - 1, Math.floor(i * step))]
     }
 
     return result
@@ -65,8 +63,6 @@ function sampleImage(src: string, size = 720): Promise<Point[]> {
       ctx.fillStyle = '#000'
       ctx.fillRect(0, 0, size, size)
 
-      // Keep each source's original aspect ratio.
-      // The square sampling surface prevents the globe from becoming vertically stretched.
       const scale = Math.min(size / image.width, size / image.height)
       const drawWidth = image.width * scale
       const drawHeight = image.height * scale
@@ -90,12 +86,10 @@ function sampleImage(src: string, size = 720): Promise<Point[]> {
 
           if (brightness < 0.27) continue
 
-          const strength = clamp((brightness - 0.27) / 0.73, 0, 1)
-
           candidates.push({
             x: x / size - 0.5,
             y: y / size - 0.5,
-            strength,
+            strength: clamp((brightness - 0.27) / 0.73, 0, 1),
           })
         }
       }
@@ -108,41 +102,148 @@ function sampleImage(src: string, size = 720): Promise<Point[]> {
   })
 }
 
+function shader(gl: WebGLRenderingContext, type: number, source: string) {
+  const value = gl.createShader(type)
+  if (!value) throw new Error('Unable to create shader')
+  gl.shaderSource(value, source)
+  gl.compileShader(value)
+
+  if (!gl.getShaderParameter(value, gl.COMPILE_STATUS)) {
+    const log = gl.getShaderInfoLog(value) || 'Shader compilation failed'
+    gl.deleteShader(value)
+    throw new Error(log)
+  }
+
+  return value
+}
+
+function createProgram(gl: WebGLRenderingContext, vertexSource: string, fragmentSource: string) {
+  const vertex = shader(gl, gl.VERTEX_SHADER, vertexSource)
+  const fragment = shader(gl, gl.FRAGMENT_SHADER, fragmentSource)
+  const program = gl.createProgram()
+
+  if (!program) throw new Error('Unable to create program')
+
+  gl.attachShader(program, vertex)
+  gl.attachShader(program, fragment)
+  gl.linkProgram(program)
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    const log = gl.getProgramInfoLog(program) || 'Program linking failed'
+    gl.deleteProgram(program)
+    gl.deleteShader(vertex)
+    gl.deleteShader(fragment)
+    throw new Error(log)
+  }
+
+  gl.deleteShader(vertex)
+  gl.deleteShader(fragment)
+  return program
+}
+
+const vertexShader = [
+  'attribute vec2 aB1o;',
+  'attribute vec2 aBall;',
+  'attribute vec2 aKeyboard;',
+  'attribute float sB1o;',
+  'attribute float sBall;',
+  'attribute float sKeyboard;',
+  'attribute float aSeed;',
+  'uniform float uProgress;',
+  'uniform float uTime;',
+  'uniform vec2 uScale;',
+  'uniform float uPixelRatio;',
+  'varying float vAlpha;',
+  '',
+  'float quintic(float x) {',
+  '  x = clamp(x, 0.0, 1.0);',
+  '  return x * x * x * (x * (x * 6.0 - 15.0) + 10.0);',
+  '}',
+  '',
+  'void main() {',
+  '  float p = clamp(uProgress, 0.0, 2.0);',
+  '  vec2 from;',
+  '  vec2 to;',
+  '  float local;',
+  '  float fromStrength;',
+  '  float toStrength;',
+  '',
+  '  if (p < 1.0) {',
+  '    local = p;',
+  '    from = aB1o;',
+  '    to = aBall * 0.80;',
+  '    fromStrength = sB1o;',
+  '    toStrength = sBall;',
+  '  } else {',
+  '    local = p - 1.0;',
+  '    from = aBall * 0.80;',
+  '    to = aKeyboard;',
+  '    fromStrength = sBall;',
+  '    toStrength = sKeyboard;',
+  '  }',
+  '',
+  '  float t = quintic(local);',
+  '  vec2 pos = mix(from, to, t);',
+  '  float travel = sin(3.14159265 * local);',
+  '  float angle = aSeed * 6.2831853 + uTime * (0.30 + aSeed * 0.70);',
+  '  float burst = travel * (0.003 + aSeed * 0.009);',
+  '',
+  '  pos += vec2(cos(angle), sin(angle)) * burst;',
+  '  pos += vec2(',
+  '    sin(uTime * 2.0 + aSeed * 18.0),',
+  '    cos(uTime * 1.7 + aSeed * 15.0)',
+  '  ) * 0.00045;',
+  '',
+  '  gl_Position = vec4(pos * uScale, 0.0, 1.0);',
+  '  float strength = mix(fromStrength, toStrength, t);',
+  '  vAlpha = 0.62 + min(0.38, strength * 0.45);',
+  '  gl_PointSize = uPixelRatio * (1.55 + strength * 0.55);',
+  '}',
+].join('\\n')
+
+const fragmentShader = [
+  'precision mediump float;',
+  'varying float vAlpha;',
+  'void main() {',
+  '  vec2 p = gl_PointCoord - 0.5;',
+  '  float distanceFromCenter = length(p) * 2.0;',
+  '  float alpha = smoothstep(1.0, 0.22, distanceFromCenter) * vAlpha;',
+  '  if (alpha < 0.01) discard;',
+  '  gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);',
+  '}',
+].join('\\n')
+
 export default function ParticleMorph({
   images,
-  progress,
+  progressRef,
   particleDensity = 1,
   className = '',
 }: ParticleMorphProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const progressRef = useRef(progress)
-  const targetsRef = useRef<Point[][]>([])
-
-  const seed = useMemo(
-    () =>
-      Array.from({ length: 12000 }, (_, index) => {
-        const value = Math.sin(index * 12.9898) * 43758.5453
-        return value - Math.floor(value)
-      }),
-    [],
-  )
-
-  useEffect(() => {
-    progressRef.current = progress
-  }, [progress])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    const gl = canvas.getContext('webgl', {
+      antialias: false,
+      alpha: true,
+      powerPreference: 'high-performance',
+      desynchronized: true,
+      preserveDrawingBuffer: false,
+    })
+
+    if (!gl) {
+      console.warn('WebGL unavailable for particle morph')
+      return
+    }
 
     let disposed = false
     let frame = 0
-    let width = 0
-    let height = 0
-    let dpr = 1
+    let width = 1
+    let height = 1
+    let pixelRatio = 1
+    let stopRenderer = () => {}
 
     const particleCount = Math.round(
       (window.innerWidth < 760 ? 5000 : 8500) * particleDensity,
@@ -151,93 +252,125 @@ export default function ParticleMorph({
     const resize = () => {
       width = window.innerWidth
       height = window.innerHeight
-      dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 760 ? 1.15 : 1.5)
-      canvas.width = Math.floor(width * dpr)
-      canvas.height = Math.floor(height * dpr)
+      pixelRatio = Math.min(
+        window.devicePixelRatio || 1,
+        window.innerWidth < 760 ? 1.15 : 1.5,
+      )
+
+      canvas.width = Math.floor(width * pixelRatio)
+      canvas.height = Math.floor(height * pixelRatio)
       canvas.style.width = '100%'
       canvas.style.height = '100%'
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      gl.viewport(0, 0, canvas.width, canvas.height)
     }
 
-    const render = () => {
-      if (disposed || targetsRef.current.length !== images.length) return
+    const setAttribute = (program: WebGLProgram, name: string, values: Float32Array, size: number) => {
+      const location = gl.getAttribLocation(program, name)
+      const buffer = gl.createBuffer()
 
-      ctx.clearRect(0, 0, width, height)
+      if (location < 0 || !buffer) throw new Error('Failed to create attribute: ' + name)
 
-      const p = clamp(progressRef.current, 0, images.length - 1)
-      const segment = Math.min(images.length - 2, Math.floor(p))
-      const local = p - segment
-      const eased = smoothstep(local)
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+      gl.bufferData(gl.ARRAY_BUFFER, values, gl.STATIC_DRAW)
+      gl.enableVertexAttribArray(location)
+      gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0)
 
-      const scale = Math.min(width, height) * 1.18
-      const time = performance.now() * 0.00035
+      return buffer
+    }
 
-      const from = targetsRef.current[segment]
-      const to = targetsRef.current[segment + 1]
+    const start = async () => {
+      const loaded = await Promise.all(images.map((src) => sampleImage(src)))
+      if (disposed) return () => {}
+
+      const prepared = loaded.map((points) => selectEvenly(points, particleCount))
+      const b1o = new Float32Array(particleCount * 2)
+      const ball = new Float32Array(particleCount * 2)
+      const keyboard = new Float32Array(particleCount * 2)
+      const sB1o = new Float32Array(particleCount)
+      const sBall = new Float32Array(particleCount)
+      const sKeyboard = new Float32Array(particleCount)
+      const seeds = new Float32Array(particleCount)
 
       for (let i = 0; i < particleCount; i += 1) {
-        const noise = seed[i % seed.length]
-        const a = from[i]
-        const b = to[i]
+        const offset = i * 2
+        b1o[offset] = prepared[0][i].x
+        b1o[offset + 1] = prepared[0][i].y
+        ball[offset] = prepared[1][i].x
+        ball[offset + 1] = prepared[1][i].y
+        keyboard[offset] = prepared[2][i].x
+        keyboard[offset + 1] = prepared[2][i].y
 
-        const fromScale = segment === 1 ? 0.80 : 1
-        const toScale = segment === 0 ? 0.80 : 1
+        sB1o[i] = prepared[0][i].strength
+        sBall[i] = prepared[1][i].strength
+        sKeyboard[i] = prepared[2][i].strength
 
-        const startX = a.x * fromScale
-        const startY = a.y * fromScale
-        const endX = b.x * toScale
-        const endY = b.y * toScale
-
-        let nx = lerp(startX, endX, eased)
-        let ny = lerp(startY, endY, eased)
-
-        const travel = Math.sin(Math.PI * local)
-        const angle = noise * Math.PI * 2 + time * (0.3 + noise * 0.7)
-        const burst = travel * (0.003 + noise * 0.009)
-
-        nx += Math.cos(angle) * burst
-        ny += Math.sin(angle) * burst
-
-        nx += Math.sin(time * 2 + noise * 18) * 0.00045
-        ny += Math.cos(time * 1.7 + noise * 15) * 0.00045
-
-        const x = width * 0.5 + nx * scale
-        const y = height * 0.5 + ny * scale
-
-        ctx.globalAlpha = 0.62 + Math.min(0.38, (a.strength + b.strength) * 0.22)
-        ctx.fillStyle = '#fff'
-        ctx.beginPath()
-        ctx.arc(x, y, window.innerWidth < 760 ? 0.82 : 1.02, 0, Math.PI * 2)
-        ctx.fill()
+        const value = Math.sin((i + 1) * 12.9898) * 43758.5453
+        seeds[i] = value - Math.floor(value)
       }
 
-      ctx.globalAlpha = 1
+      const program = createProgram(gl, vertexShader, fragmentShader)
+      gl.useProgram(program)
+
+      const uniformProgress = gl.getUniformLocation(program, 'uProgress')
+      const uniformTime = gl.getUniformLocation(program, 'uTime')
+      const uniformScale = gl.getUniformLocation(program, 'uScale')
+      const uniformPixelRatio = gl.getUniformLocation(program, 'uPixelRatio')
+
+      setAttribute(program, 'aB1o', b1o, 2)
+      setAttribute(program, 'aBall', ball, 2)
+      setAttribute(program, 'aKeyboard', keyboard, 2)
+      setAttribute(program, 'sB1o', sB1o, 1)
+      setAttribute(program, 'sBall', sBall, 1)
+      setAttribute(program, 'sKeyboard', sKeyboard, 1)
+      setAttribute(program, 'aSeed', seeds, 1)
+
+      gl.enable(gl.BLEND)
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+      gl.clearColor(0, 0, 0, 0)
+
+      const render = (time: number) => {
+        if (disposed) return
+
+        const aspect = width / Math.max(1, height)
+        const scaleX = 2.0 * 1.18 * Math.min(1, aspect)
+        const scaleY = 2.0 * 1.18 * Math.min(1, 1 / aspect)
+
+        gl.clear(gl.COLOR_BUFFER_BIT)
+        gl.useProgram(program)
+        gl.uniform1f(uniformProgress, progressRef.current)
+        gl.uniform1f(uniformTime, time * 0.001)
+        gl.uniform2f(uniformScale, scaleX, scaleY)
+        gl.uniform1f(uniformPixelRatio, pixelRatio)
+        gl.drawArrays(gl.POINTS, 0, particleCount)
+
+        frame = requestAnimationFrame(render)
+      }
+
+      resize()
+      window.addEventListener('resize', resize)
       frame = requestAnimationFrame(render)
-    }
 
-    const loadTargets = async () => {
-      try {
-        const candidates = await Promise.all(images.map((src) => sampleImage(src)))
-        targetsRef.current = candidates.map((points) => selectEvenly(points, particleCount))
-
-        if (!disposed) {
-          render()
-        }
-      } catch (error) {
-        console.error(error)
+      return () => {
+        cancelAnimationFrame(frame)
+        window.removeEventListener('resize', resize)
+        gl.deleteProgram(program)
       }
     }
 
-    resize()
-    window.addEventListener('resize', resize)
-    void loadTargets()
+    void start()
+      .then((cleanup) => {
+        if (disposed) cleanup()
+        else stopRenderer = cleanup
+      })
+      .catch((error) => console.error(error))
 
     return () => {
       disposed = true
-      cancelAnimationFrame(frame)
+      stopRenderer()
+      if (frame) cancelAnimationFrame(frame)
       window.removeEventListener('resize', resize)
     }
-  }, [images, particleDensity, seed])
+  }, [images, particleDensity, progressRef])
 
   return <canvas ref={canvasRef} className={className} aria-hidden="true" />
 }
