@@ -32,9 +32,6 @@ function App() {
   const [isComplete, setIsComplete] = useState(false)
   const progressRef = useRef(0)
   const lastTouchY = useRef(0)
-
-
-  const progressRef = useRef(progress)
   useEffect(() => {
     progressRef.current = progress
   }, [progress])
