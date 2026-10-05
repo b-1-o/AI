@@ -52,7 +52,7 @@ function morphProgress(p: number) {
 }
 
 function crystalIndex(p: number) {
-  if (p < CRYSTAL_START - 0.5) return -1
+  if (p < CRYSTAL_START) return -1
   return clamp(Math.round(p - CRYSTAL_START), 0, CRYSTALS.length - 1)
 }
 
@@ -205,31 +205,61 @@ function App() {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      if (modalOpenRef.current) return
       const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0
-      if (dir !== 0) scheduleDirectionalSnap(dir)
+      if (dir === 0) return
+
+      // Leaving any crystal state should immediately return to the actual
+      // particle-morph timeline instead of traversing hidden crystal slots.
+      if (dir < 0 && targetProgressRef.current >= CRYSTAL_START) {
+        if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
+        if (panelAnimRef.current !== null) cancelAnimationFrame(panelAnimRef.current)
+        panelAnimRef.current = null
+        panelRef.current = 0
+        modalOpenRef.current = false
+        setPanelReady(false)
+        setModalOpen(false)
+        targetProgressRef.current = CRYSTAL_START
+        renderedProgressRef.current = CRYSTAL_START
+        applyProgressRef.current(CRYSTAL_START)
+      }
+
       targetProgressRef.current = clamp(
         targetProgressRef.current + e.deltaY * DESKTOP_SENSITIVITY,
         0,
         MAX_PROGRESS,
       )
+      scheduleDirectionalSnap(dir)
       wake()
     }
     const onTouchStart = (e: TouchEvent) => {
       lastTouchY.current = e.touches[0]?.clientY ?? 0
     }
     const onTouchMove = (e: TouchEvent) => {
-      if (modalOpenRef.current) return
       const y = e.touches[0]?.clientY ?? lastTouchY.current
       const dy = lastTouchY.current - y
       lastTouchY.current = y
       const dir = dy > 0 ? 1 : dy < 0 ? -1 : 0
-      if (dir !== 0) scheduleDirectionalSnap(dir)
+      if (dir === 0) return
+
+      if (dir < 0 && targetProgressRef.current >= CRYSTAL_START) {
+        if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
+        if (panelAnimRef.current !== null) cancelAnimationFrame(panelAnimRef.current)
+        panelAnimRef.current = null
+        panelRef.current = 0
+        modalOpenRef.current = false
+        setPanelReady(false)
+        setModalOpen(false)
+        targetProgressRef.current = CRYSTAL_START
+        renderedProgressRef.current = CRYSTAL_START
+        applyProgressRef.current(CRYSTAL_START)
+      }
+
       targetProgressRef.current = clamp(
         targetProgressRef.current + dy * TOUCH_SENSITIVITY,
         0,
         MAX_PROGRESS,
       )
+      scheduleDirectionalSnap(dir)
       wake()
     }
 
