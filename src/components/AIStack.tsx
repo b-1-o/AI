@@ -169,31 +169,25 @@ export default function AIStack({ focusModel, defaultLeaf }: AIStackProps) {
       </div>
 
       <div className="ai-stack-panel" key={active}>
+        <div className="ai-stack-panel-shine" aria-hidden="true" />
         <div className="ai-stack-meta">
           <span className="ai-stack-tag">{detail.tag}</span>
           <span className="ai-stack-role">{detail.role}</span>
         </div>
         <h3 className="ai-stack-title">{detail.title}</h3>
         <p className="ai-stack-body">{detail.body}</p>
-        {detail.connects.length > 0 ? (
-          <div className="ai-stack-connects">
-            <span className="ai-stack-connects-label">Connected</span>
-            <div className="ai-stack-chips">
-              {detail.connects.map((c) => (
-                <span key={c} className="ai-stack-chip">
-                  {c}
-                </span>
-              ))}
-            </div>
+        <div className="ai-stack-connects">
+          <span className="ai-stack-connects-label">
+            {detail.connects.length > 0 ? 'Connected' : 'Focus'}
+          </span>
+          <div className="ai-stack-chips">
+            {(detail.connects.length > 0 ? detail.connects : ['Visual generation']).map((c) => (
+              <span key={c} className="ai-stack-chip">
+                {c}
+              </span>
+            ))}
           </div>
-        ) : (
-          <div className="ai-stack-connects">
-            <span className="ai-stack-connects-label">Focus</span>
-            <div className="ai-stack-chips">
-              <span className="ai-stack-chip">Visual generation</span>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )
