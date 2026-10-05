@@ -283,7 +283,7 @@ function App() {
       }
 
       if (modalOpenRef.current) {
-        if (dir < 0 && activeCrystalRef.current > 0) {
+        if (activeCrystalRef.current > 0) {
           closePanel()
         } else {
           return
@@ -313,6 +313,7 @@ function App() {
       if (
         dir < 0 &&
         targetProgressRef.current >= CRYSTAL_START &&
+        crystalActiveRef.current &&
         activeCrystalRef.current === CRYSTALS.length - 1
       ) {
         exitCrystalToHome()
@@ -320,7 +321,7 @@ function App() {
       }
 
       if (modalOpenRef.current) {
-        if (dir > 0 && activeCrystalRef.current > 0) {
+        if (activeCrystalRef.current > 0) {
           closePanel()
         } else {
           return
@@ -491,9 +492,6 @@ function App() {
       {modalOpen && (
         <div className="crystal-inline" role="dialog" aria-modal="true" aria-label={crystal.id}>
           <button type="button" className="crystal-inline-dismiss" aria-label="Close" onClick={closePanel} />
-          <button type="button" className="crystal-inline-mobile-close" aria-label={`Close ${crystal.id}`} onClick={closePanel}>
-            <span aria-hidden="true">×</span>
-          </button>
           <div className={`crystal-inline-content${panelReady ? ' crystal-inline-content--in' : ''}`}>
               {(crystal.id === 'ChatGPT' || crystal.id === 'Grok' || crystal.id === 'Gemini') && crystal.leaf && (
                 <AIStack focusModel={crystal.id} defaultLeaf={crystal.leaf} />
