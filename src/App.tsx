@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import DecryptedText from './components/DecryptedText'
 import AIStack from './components/AIStack'
+import TargetCursor from './components/TargetCursor'
 import './components/CrystalScroll.css'
 import { LogoGitHub, LogoLinkedIn } from './components/Logos'
 import b1oImage from '../assets/b1o.jpg'
@@ -32,12 +33,12 @@ const MORPH_SPEED = 0.85
 const SNAP_DELAY = 340
 
 const projects = [
-  { name: 'HEAVEN', type: 'Developer command center', stack: 'Next.js · TypeScript · PostgreSQL · Vercel', href: 'https://heaven-b1o.vercel.app/' },
-  { name: 'myUI', type: 'Experimental frontend / UI system', stack: 'React · TypeScript · Motion · GitHub Pages', href: 'https://b-1-o.github.io/myUI/' },
-  { name: 'Music', type: 'Modern music web application', stack: 'React · API · Player · Responsive UI', href: 'https://b-1-o.github.io/music/' },
-  { name: 'Nothing', type: 'Product design experiment', stack: 'React · Visual systems · Interaction', href: 'https://github.com/b-1-o/nothing' },
-  { name: 'Coffee', type: 'Homemade coffee & dessert experience', stack: 'React · Motion · Product UI', href: 'https://b-1-o.github.io/coffee/' },
+  { name: 'nothing', type: 'Product design experiment', stack: 'React · Visual systems · Interaction', href: 'https://github.com/b-1-o/nothing' },
   { name: 'b1api', type: 'Developer API experiment', stack: 'TypeScript · APIs · Tooling', href: 'https://github.com/b-1-o/b1api' },
+  { name: 'coffee', type: 'Homemade coffee & dessert experience', stack: 'React · Motion · Product UI', href: 'https://b-1-o.github.io/coffee/' },
+  { name: 'portfolio', type: 'Personal portfolio', stack: 'React · Motion · Design systems', href: 'https://b-1-o.github.io/' },
+  { name: 'myUI', type: 'Experimental frontend / UI system', stack: 'React · TypeScript · Motion · GitHub Pages', href: 'https://b-1-o.github.io/myUI/' },
+  { name: 'heaven', type: 'Developer command center', stack: 'Next.js · TypeScript · PostgreSQL · Vercel', href: 'https://heaven-b1o.vercel.app/' },
 ]
 
 const contacts = [
@@ -388,6 +389,16 @@ function App() {
         </div>
       </section>
 
+      {modalOpen && (crystal.id === 'Work' || crystal.id === 'Contact') && (
+        <TargetCursor
+          spinDuration={5}
+          hideDefaultCursor
+          parallaxOn
+          hoverDuration={0.8}
+          cursorColor="#ffffff"
+          cursorColorOnTarget="#ffffff"
+        />
+      )}
       {modalOpen && (
         <div className="crystal-inline" role="dialog" aria-modal="true" aria-label={crystal.id}>
           <button type="button" className="crystal-inline-dismiss" aria-label="Close" onClick={closePanel} />
@@ -400,7 +411,7 @@ function App() {
                   <p className="menu-hub-lead">Real products and experiments — interfaces, motion, systems.</p>
                   <div className="hub-project-grid">
                     {projects.map((project, index) => (
-                      <a className="hub-project" href={project.href} target="_blank" rel="noreferrer" key={project.name}>
+                      <a className="hub-project cursor-target" href={project.href} target="_blank" rel="noreferrer" key={project.name}>
                         <div className="hub-project-top">
                           <span className="hub-project-num">0{index + 1}</span>
                           <span className="hub-project-arrow" aria-hidden="true">↗</span>
@@ -418,7 +429,7 @@ function App() {
                   <p className="menu-hub-lead">Open a channel — code, hire, or just say hi.</p>
                   <div className="hub-contact-grid">
                     {contacts.map((c) => (
-                      <a className="hub-contact-card" href={c.href} target="_blank" rel="noreferrer" key={c.name}>
+                      <a className="hub-contact-card cursor-target" href={c.href} target="_blank" rel="noreferrer" key={c.name}>
                         <span className="hub-contact-icon">
                           {c.Logo ? <c.Logo size={22} /> : <span className="hub-contact-letter">F</span>}
                         </span>
