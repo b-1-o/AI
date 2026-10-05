@@ -255,7 +255,9 @@ function App() {
       const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0
       if (dir === 0) return
 
-      if (dir < 0 && targetProgressRef.current >= CRYSTAL_START) {
+      // Only leave the crystal timeline from Contact, and only when scrolling down.
+      // Wheel down = deltaY > 0.
+      if (dir > 0 && activeCrystalRef.current === CRYSTALS.length - 1) {
         exitCrystalToHome()
         return
       }
@@ -280,7 +282,9 @@ function App() {
       const dir = dy > 0 ? 1 : dy < 0 ? -1 : 0
       if (dir === 0) return
 
-      if (dir < 0 && targetProgressRef.current >= CRYSTAL_START) {
+      // Only leave the crystal timeline from Contact, and only when swiping down.
+      // Finger moving down => dy < 0.
+      if (dir < 0 && activeCrystalRef.current === CRYSTALS.length - 1) {
         exitCrystalToHome()
         return
       }
