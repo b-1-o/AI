@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import DecryptedText from './components/DecryptedText'
+import AIStack from './components/AIStack'
 import b1oImage from '../assets/b1o.jpg'
 import ballImage from '../assets/ball.jpg'
 import keyboardImage from '../assets/keyboard.jpg'
@@ -334,8 +335,17 @@ function App() {
           </div>
         </section>
 
+        <section className="ai-stack-section section-pad">
+          <div className="eyebrow">03 — AI STACK</div>
+          <div className="ai-stack-head">
+            <h2>How each model earns its place.</h2>
+            <p>Folders for every AI I actually use — what it does, what connects to it, and where it sits in the process.</p>
+          </div>
+          <AIStack />
+        </section>
+
         <section className="tools section-pad">
-          <div className="eyebrow">03 — TOOLKIT</div>
+          <div className="eyebrow">04 — TOOLKIT</div>
           <div className="tools-grid">
             {tools.map(([label, value]) => (
               <div className="tool-row" key={label}>
@@ -347,7 +357,7 @@ function App() {
         </section>
 
         <section className="projects section-pad">
-          <div className="eyebrow">04 — WORK</div>
+          <div className="eyebrow">05 — WORK</div>
           <div className="projects-head">
             <h2>Built, tested, shipped.</h2>
             <p>Real experiments and products built around interfaces, motion and systems.</p>
@@ -368,7 +378,7 @@ function App() {
         </section>
 
         <section className="contact section-pad">
-          <div className="eyebrow">05 — CONTACT</div>
+          <div className="eyebrow">06 — CONTACT</div>
           <h2>Let&apos;s build something worth remembering.</h2>
           <div className="contact-row">
             <a href="https://github.com/b-1-o" target="_blank" rel="noreferrer">GitHub ↗</a>
