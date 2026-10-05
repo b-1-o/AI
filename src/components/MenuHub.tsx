@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import OptionWheel from './OptionWheel'
 import AIStack from './AIStack'
+import { ModelLogo, LogoGitHub, LogoLinkedIn } from './Logos'
 
 const HUB_ITEMS = ['ChatGPT', 'Grok', 'Gemini', 'Work', 'Contact'] as const
 type HubItem = (typeof HUB_ITEMS)[number]
@@ -11,42 +12,36 @@ const projects = [
     type: 'Developer command center',
     stack: 'Next.js · TypeScript · PostgreSQL · Vercel',
     href: 'https://heaven-b1o.vercel.app/',
-    tone: 'ops',
   },
   {
     name: 'myUI',
     type: 'Experimental frontend / UI system',
     stack: 'React · TypeScript · Motion · GitHub Pages',
     href: 'https://b-1-o.github.io/myUI/',
-    tone: 'ui',
   },
   {
     name: 'Music',
     type: 'Modern music web application',
     stack: 'React · API · Player · Responsive UI',
     href: 'https://b-1-o.github.io/music/',
-    tone: 'media',
   },
   {
     name: 'Nothing',
     type: 'Product design experiment',
     stack: 'React · Visual systems · Interaction',
     href: 'https://github.com/b-1-o/nothing',
-    tone: 'exp',
   },
   {
     name: 'Coffee',
     type: 'Homemade coffee & dessert experience',
     stack: 'React · Motion · Product UI',
     href: 'https://b-1-o.github.io/coffee/',
-    tone: 'product',
   },
   {
     name: 'b1api',
     type: 'Developer API experiment',
     stack: 'TypeScript · APIs · Tooling',
     href: 'https://github.com/b-1-o/b1api',
-    tone: 'api',
   },
 ]
 
@@ -56,45 +51,24 @@ const AI_DEFAULT: Record<string, string> = {
   Gemini: 'gem-role',
 }
 
-const MODEL_META: Record<
-  string,
-  { label: string; accent: string; blurb: string; step: string }
-> = {
-  ChatGPT: {
-    label: 'STRUCTURE',
-    accent: 'gpt',
-    blurb: 'First assembly — skeleton, sections, what to build next.',
-    step: '01',
-  },
-  Grok: {
-    label: 'FINISH',
-    accent: 'grok',
-    blurb: 'Hard pass — polish, QA, ship only when it is ideal.',
-    step: '02',
-  },
-  Gemini: {
-    label: 'VISUAL',
-    accent: 'gem',
-    blurb: 'Images, atmosphere, particles — the look of the product.',
-    step: '03',
-  },
-}
-
 const contacts = [
   {
     name: 'GitHub',
     href: 'https://github.com/b-1-o',
     desc: 'Code, experiments, open work',
+    Logo: LogoGitHub,
   },
   {
     name: 'LinkedIn',
     href: 'https://www.linkedin.com/in/b1o',
     desc: 'Profile & professional contact',
+    Logo: LogoLinkedIn,
   },
   {
     name: 'Fiverr',
     href: 'https://www.fiverr.com/users/webbio',
     desc: 'Hire for builds & interfaces',
+    Logo: null as null | typeof LogoGitHub,
   },
 ]
 
@@ -106,10 +80,9 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
   const [hubIndex, setHubIndex] = useState(0)
   const active = HUB_ITEMS[hubIndex] as HubItem
   const isAI = active === 'ChatGPT' || active === 'Grok' || active === 'Gemini'
-  const meta = isAI ? MODEL_META[active] : null
 
   return (
-    <div className={`menu-hub menu-hub--${isAI ? meta?.accent : active.toLowerCase()}`}>
+    <div className="menu-hub">
       <div className="menu-hub-glow" aria-hidden="true" />
       <div className="menu-hub-noise" aria-hidden="true" />
 
@@ -159,17 +132,19 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
         </aside>
 
         <div className="menu-hub-stage" key={active}>
-          {isAI && meta && (
-            <div className={`menu-hub-ai menu-hub-ai--${meta.accent}`}>
-              <div className="menu-hub-ai-head">
-                <div className="menu-hub-ai-step">{meta.step}</div>
+          {isAI && (
+            <div className="menu-hub-ai">
+              <div className="menu-hub-model-bar">
+                <span className="menu-hub-model-logo">
+                  <ModelLogo name={active} size={32} />
+                </span>
                 <div>
-                  <div className="menu-hub-ai-badges">
-                    <span className={`menu-hub-pill menu-hub-pill--${meta.accent}`}>{meta.label}</span>
-                    <span className="menu-hub-pill menu-hub-pill--ghost">{active}</span>
-                  </div>
-                  <h2 className="menu-hub-ai-title">{active}</h2>
-                  <p className="menu-hub-ai-blurb">{meta.blurb}</p>
+                  <h2 className="menu-hub-model-name">{active}</h2>
+                  <p className="menu-hub-model-sub">
+                    {active === 'ChatGPT' && 'Initial build · structure · what comes next'}
+                    {active === 'Grok' && 'Perfect finish · review · close when ideal'}
+                    {active === 'Gemini' && 'Images · effects · visual consistency'}
+                  </p>
                 </div>
               </div>
 
@@ -180,7 +155,6 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
           {active === 'Work' && (
             <div className="menu-hub-work">
               <div className="menu-hub-section-head">
-                <span className="menu-hub-pill menu-hub-pill--ghost">04 — Work</span>
                 <h2 className="menu-hub-title">Built, tested, shipped.</h2>
                 <p className="menu-hub-lead">
                   Real products and experiments — interfaces, motion, systems.
@@ -189,7 +163,7 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
               <div className="hub-project-grid">
                 {projects.map((project, index) => (
                   <a
-                    className={`hub-project hub-project--${project.tone}`}
+                    className="hub-project"
                     href={project.href}
                     target="_blank"
                     rel="noreferrer"
@@ -213,7 +187,6 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
           {active === 'Contact' && (
             <div className="menu-hub-contact">
               <div className="menu-hub-section-head">
-                <span className="menu-hub-pill menu-hub-pill--ghost">05 — Contact</span>
                 <h2 className="menu-hub-title">Let&apos;s build something worth remembering.</h2>
                 <p className="menu-hub-lead">Open a channel — code, hire, or just say hi.</p>
               </div>
@@ -226,6 +199,9 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
                     rel="noreferrer"
                     key={c.name}
                   >
+                    <span className="hub-contact-icon">
+                      {c.Logo ? <c.Logo size={22} /> : <span className="hub-contact-letter">F</span>}
+                    </span>
                     <span className="hub-contact-name">{c.name}</span>
                     <span className="hub-contact-desc">{c.desc}</span>
                     <span className="hub-contact-go">Open ↗</span>
