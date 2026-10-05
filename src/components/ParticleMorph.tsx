@@ -7,6 +7,7 @@ type ParticleMorphProps = {
   images: string[]
   progressRef: { current: number }
   dissolveRef?: { current: number }
+  panelRef?: { current: number }
   particleDensity?: number
   className?: string
 }
@@ -118,6 +119,7 @@ const vertexShader = [
   'uniform float uProgress;',
   'uniform float uTime;',
   'uniform float uDissolve;',
+  'uniform float uPanel;',
   'uniform vec2 uScale;',
   'uniform float uPixelRatio;',
   'varying float vAlpha;',
@@ -170,9 +172,34 @@ const vertexShader = [
   '      float d = uDissolve;',
   '      float rnd = aKeyboard.w;',
   '      vec2 dir = normalize(pos + vec2(0.0001));',
-  '      float outward = d * (0.12 + rnd * 0.28);',
+  '      float outward = d * (0.14 + rnd * 0.32);',
   '      pos += dir * outward;',
-  '      pos += vec2(cos(rnd * 40.0 + uTime * 4.0), sin(rnd * 35.0 + uTime * 3.5)) * d * 0.08;',
+  '      pos += vec2(cos(rnd * 40.0 + uTime * 4.0), sin(rnd * 35.0 + uTime * 3.5)) * d * 0.09;',
+  '      pos.y -= d * (0.12 + rnd * 0.1);',
+  '    }',
+  '    if (uPanel > 0.001) {',
+  '      float pn = uPanel;',
+  '      float rnd = aKeyboard.w;',
+  '      float edgeN = aCrystal.z;',
+  '      float hw = 0.38;',
+  '      float hh = 0.48;',
+  '      float slot = fract(rnd * 7.13);',
+  '      vec2 panelPos;',
+  '      if (edgeN > 0.55 || slot < 0.55) {',
+  '        float peri = fract(rnd * 3.7 + aCrystal.x * 2.0);',
+  '        float plen = 2.0 * (hw + hh);',
+  '        float d = peri * plen;',
+  '        if (d < 2.0 * hw) { panelPos = vec2(-hw + d, hh); }',
+  '        else if (d < 2.0 * hw + 2.0 * hh) { panelPos = vec2(hw, hh - (d - 2.0 * hw)); }',
+  '        else if (d < 4.0 * hw + 2.0 * hh) { panelPos = vec2(hw - (d - 2.0 * hw - 2.0 * hh), -hh); }',
+  '        else { panelPos = vec2(-hw, -hh + (d - 4.0 * hw - 2.0 * hh)); }',
+  '      } else {',
+  '        panelPos = vec2((rnd - 0.5) * 2.0 * hw * 0.92, (fract(rnd * 11.0) - 0.5) * 2.0 * hh * 0.92);',
+  '      }',
+  '      float scatter = sin(pn * 3.14159265);',
+  '      vec2 mid = mix(pos, panelPos, pn);',
+  '      mid += vec2(cos(rnd * 20.0), sin(rnd * 17.0)) * scatter * 0.06;',
+  '      pos = mix(pos, mid, pn);',
   '    }',
   '  }',
   '  gl_Position = vec4(pos * uScale, 0.0, 1.0);',
@@ -202,12 +229,15 @@ export default function ParticleMorph({
   images,
   progressRef,
   dissolveRef,
+  panelRef,
   particleDensity = 1,
   className = '',
 }: ParticleMorphProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const dissolveInternal = useRef(0)
+  const panelInternal = useRef(0)
   const dissolve = dissolveRef ?? dissolveInternal
+  const panel = panelRef ?? panelInternal
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -286,6 +316,7 @@ export default function ParticleMorph({
       const uniformProgress = gl.getUniformLocation(program, 'uProgress')
       const uniformTime = gl.getUniformLocation(program, 'uTime')
       const uniformDissolve = gl.getUniformLocation(program, 'uDissolve')
+      const uniformPanel = gl.getUniformLocation(program, 'uPanel')
       const uniformScale = gl.getUniformLocation(program, 'uScale')
       const uniformPixelRatio = gl.getUniformLocation(program, 'uPixelRatio')
 
@@ -341,9 +372,10 @@ export default function ParticleMorph({
         if (disposed || !running || document.hidden) return
         const progress = progressRef.current
         const d = dissolve.current
+        const pn = panel.current
         const progressDelta = Math.abs(progress - lastProgress)
         const dissolveDelta = Math.abs(d - lastDissolve)
-        if (progress >= 2.0 || d > 0.001) {
+        if (progress >= 2.0 || d > 0.001 || pn > 0.001) {
           idleFrames = 0
           lastProgress = progress
           lastDissolve = d
@@ -358,6 +390,7 @@ export default function ParticleMorph({
         gl.uniform1f(uniformProgress, progress)
         gl.uniform1f(uniformTime, time * 0.001)
         gl.uniform1f(uniformDissolve, d)
+        gl.uniform1f(uniformPanel, pn)
         gl.drawArrays(gl.POINTS, 0, particleCount)
         requestRender()
       }
@@ -397,7 +430,7 @@ export default function ParticleMorph({
       disposed = true
       stopRenderer()
     }
-  }, [images, particleDensity, progressRef, dissolve])
+  }, [images, particleDensity, progressRef, dissolve, panel])
 
   return <canvas ref={canvasRef} className={className} aria-hidden="true" />
 }
