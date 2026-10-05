@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import DecryptedText from './components/DecryptedText'
-import MenuHub from './components/MenuHub'
+import AIStack from './components/AIStack'
+import { LogoGitHub, LogoLinkedIn } from './components/Logos'
 import b1oImage from '../assets/b1o.jpg'
 import ballImage from '../assets/ball.jpg'
 import keyboardImage from '../assets/keyboard.jpg'
@@ -11,28 +12,58 @@ import palatImage from '../assets/palat.jpeg'
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
 const particleImages = [b1oImage, ballImage, keyboardImage, crystalImage]
 
+/** Crystals after keyboard — all same 3D form, same page, modal on click */
+const CRYSTALS = [
+  { id: 'ChatGPT', caption: 'ChatGPT — initial build', leaf: 'gpt-role' },
+  { id: 'Grok', caption: 'Grok — perfect finish', leaf: 'grok-role' },
+  { id: 'Gemini', caption: 'Gemini — images & effects', leaf: 'gem-role' },
+  { id: 'Work', caption: 'Work — selected builds', leaf: null as string | null },
+  { id: 'Contact', caption: 'Contact — reach out', leaf: null as string | null },
+] as const
+
 const BALL_STOP = 1
 const KEYBOARD_STOP = 2
-const CRYSTAL_END = 3
+const CRYSTAL_START = 3
+const MAX_PROGRESS = CRYSTAL_START + (CRYSTALS.length - 1)
 const DESKTOP_SENSITIVITY = 0.00105
 const TOUCH_SENSITIVITY = 0.00155
 const MORPH_SPEED = 1.3
 const SNAP_DELAY = 280
-const EXIT_SCROLL_THRESHOLD = 160
-const EXIT_DURATION_MS = 700
 
-type Phase = 'intro' | 'exiting' | 'hub'
+const projects = [
+  { name: 'HEAVEN', type: 'Developer command center', stack: 'Next.js · TypeScript · PostgreSQL · Vercel', href: 'https://heaven-b1o.vercel.app/' },
+  { name: 'myUI', type: 'Experimental frontend / UI system', stack: 'React · TypeScript · Motion · GitHub Pages', href: 'https://b-1-o.github.io/myUI/' },
+  { name: 'Music', type: 'Modern music web application', stack: 'React · API · Player · Responsive UI', href: 'https://b-1-o.github.io/music/' },
+  { name: 'Nothing', type: 'Product design experiment', stack: 'React · Visual systems · Interaction', href: 'https://github.com/b-1-o/nothing' },
+  { name: 'Coffee', type: 'Homemade coffee & dessert experience', stack: 'React · Motion · Product UI', href: 'https://b-1-o.github.io/coffee/' },
+  { name: 'b1api', type: 'Developer API experiment', stack: 'TypeScript · APIs · Tooling', href: 'https://github.com/b-1-o/b1api' },
+]
+
+const contacts = [
+  { name: 'GitHub', href: 'https://github.com/b-1-o', desc: 'Code, experiments, open work', Logo: LogoGitHub },
+  { name: 'LinkedIn', href: 'https://www.linkedin.com/in/b1o', desc: 'Profile & professional contact', Logo: LogoLinkedIn },
+  { name: 'Fiverr', href: 'https://www.fiverr.com/users/webbio', desc: 'Hire for builds & interfaces', Logo: null as null | typeof LogoGitHub },
+]
+
+function morphProgress(p: number) {
+  return clamp(p, 0, 3)
+}
+
+function crystalIndex(p: number) {
+  if (p < CRYSTAL_START - 0.5) return -1
+  return clamp(Math.round(p - CRYSTAL_START), 0, CRYSTALS.length - 1)
+}
 
 function App() {
-  const [phase, setPhase] = useState<Phase>('intro')
   const [globeActive, setGlobeActive] = useState(false)
   const [keyboardActive, setKeyboardActive] = useState(false)
   const [crystalActive, setCrystalActive] = useState(false)
-  const [exitT, setExitT] = useState(0)
-  const [crystalOpen, setCrystalOpen] = useState(false)
+  const [activeCrystal, setActiveCrystal] = useState(0)
+  const [modalOpen, setModalOpen] = useState(false)
 
   const targetProgressRef = useRef(0)
   const renderedProgressRef = useRef(0)
+  const morphProgressRef = useRef(0)
   const lastTouchY = useRef(0)
   const lastDirectionRef = useRef(0)
   const snapTimerRef = useRef<number | null>(null)
@@ -40,333 +71,309 @@ function App() {
   const globeActiveRef = useRef(false)
   const keyboardActiveRef = useRef(false)
   const crystalActiveRef = useRef(false)
-  const exitAccumRef = useRef(0)
-  const returnAccumRef = useRef(0)
-  const exitStartRef = useRef(0)
-  const exitRafRef = useRef<number | null>(null)
-  const phaseRef = useRef<Phase>('intro')
+  const activeCrystalRef = useRef(0)
 
-  const introStageRef = useRef<HTMLElement | null>(null)
   const introImageRef = useRef<HTMLDivElement | null>(null)
   const globeCaptionRef = useRef<HTMLDivElement | null>(null)
   const keyboardCaptionRef = useRef<HTMLDivElement | null>(null)
   const crystalCaptionRef = useRef<HTMLDivElement | null>(null)
 
-  phaseRef.current = phase
-
-  const scheduleDirectionalSnap = (direction: number) => {
+  const scheduleDirectionalSnap = useCallback((direction: number) => {
     lastDirectionRef.current = direction
     if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
     snapTimerRef.current = window.setTimeout(() => {
-      if (phaseRef.current !== 'intro') return
       const current = targetProgressRef.current
       const dir = lastDirectionRef.current
+      const stops: number[] = [0, BALL_STOP, KEYBOARD_STOP]
+      for (let i = 0; i < CRYSTALS.length; i++) stops.push(CRYSTAL_START + i)
+
+      let target = current
       if (dir > 0) {
-        if (current < BALL_STOP) targetProgressRef.current = BALL_STOP
-        else if (current < KEYBOARD_STOP) targetProgressRef.current = KEYBOARD_STOP
-        else targetProgressRef.current = CRYSTAL_END
+        const next = stops.find((s) => s > current + 0.08)
+        target = next !== undefined ? next : MAX_PROGRESS
       } else if (dir < 0) {
-        if (current > KEYBOARD_STOP) targetProgressRef.current = KEYBOARD_STOP
-        else if (current > BALL_STOP) targetProgressRef.current = BALL_STOP
-        else targetProgressRef.current = 0
+        const prev = [...stops].reverse().find((s) => s < current - 0.08)
+        target = prev !== undefined ? prev : 0
       }
-      snapTimerRef.current = null
+      targetProgressRef.current = clamp(target, 0, MAX_PROGRESS)
       wakeAnimationRef.current?.()
     }, SNAP_DELAY)
-  }
-
-  const beginExit = useCallback(() => {
-    if (phaseRef.current !== 'intro') return
-    phaseRef.current = 'exiting'
-    setPhase('exiting')
-    exitStartRef.current = performance.now()
-    const tick = (now: number) => {
-      const t = clamp((now - exitStartRef.current) / EXIT_DURATION_MS, 0, 1)
-      const eased = 1 - Math.pow(1 - t, 3)
-      setExitT(eased)
-      if (introStageRef.current) introStageRef.current.style.opacity = String(1 - eased)
-      if (t < 1) exitRafRef.current = requestAnimationFrame(tick)
-      else {
-        exitRafRef.current = null
-        phaseRef.current = 'hub'
-        setPhase('hub')
-        setExitT(1)
-      }
-    }
-    exitRafRef.current = requestAnimationFrame(tick)
   }, [])
 
-  const beginReturn = useCallback(() => {
-    if (phaseRef.current !== 'hub') return
-    if (exitRafRef.current) cancelAnimationFrame(exitRafRef.current)
-    targetProgressRef.current = CRYSTAL_END
-    renderedProgressRef.current = CRYSTAL_END
-    exitAccumRef.current = 0
-    returnAccumRef.current = 0
-    setExitT(0)
-    setGlobeActive(false)
-    setKeyboardActive(false)
-    setCrystalActive(true)
-    globeActiveRef.current = false
-    keyboardActiveRef.current = false
-    crystalActiveRef.current = true
-    setCrystalOpen(false)
-    phaseRef.current = 'intro'
-    setPhase('intro')
-    window.scrollTo(0, 0)
-    requestAnimationFrame(() => {
-      if (introStageRef.current) introStageRef.current.style.opacity = '1'
-      wakeAnimationRef.current?.()
-    })
-  }, [])
+  const applyProgress = useCallback((raw: number) => {
+    const next = clamp(raw, 0, MAX_PROGRESS)
+    morphProgressRef.current = morphProgress(next)
 
-  const setTargetProgress = (delta: number, sensitivity: number) => {
-    if (phaseRef.current !== 'intro') return
-    const direction = Math.sign(delta)
-    if (!direction) return
-    const atCrystal = renderedProgressRef.current >= 2.88
-    if (atCrystal && direction > 0) {
-      exitAccumRef.current += Math.abs(delta)
-      if (exitAccumRef.current >= EXIT_SCROLL_THRESHOLD) {
-        beginExit()
-        return
-      }
-      targetProgressRef.current = CRYSTAL_END
-      scheduleDirectionalSnap(direction)
-      wakeAnimationRef.current?.()
-      return
+    if (introImageRef.current) {
+      const fade = clamp(1 - next / 0.92, 0, 1)
+      introImageRef.current.style.opacity = String(fade)
+      introImageRef.current.style.transform = 'scale(' + (1 + next * 0.018) + ')'
     }
-    if (direction < 0) exitAccumRef.current = 0
-    targetProgressRef.current = clamp(targetProgressRef.current + delta * sensitivity, 0, CRYSTAL_END)
-    scheduleDirectionalSnap(direction)
-    wakeAnimationRef.current?.()
-  }
+
+    const globeOpacity = clamp(1 - Math.abs(next - 1) / 0.32, 0, 1)
+    const keyboardOpacity = clamp(1 - Math.abs(next - 2) / 0.32, 0, 1)
+    const crystalOpacity = clamp((next - 2.45) / 0.4, 0, 1)
+
+    if (globeCaptionRef.current) {
+      globeCaptionRef.current.style.opacity = String(
+        globeOpacity * (1 - keyboardOpacity) * (1 - crystalOpacity),
+      )
+    }
+    if (keyboardCaptionRef.current) {
+      keyboardCaptionRef.current.style.opacity = String(keyboardOpacity * (1 - crystalOpacity))
+    }
+    if (crystalCaptionRef.current) {
+      crystalCaptionRef.current.style.opacity = String(crystalOpacity)
+      crystalCaptionRef.current.style.transform =
+        'translate3d(0,' + (16 - crystalOpacity * 16) + 'px,0)'
+    }
+
+    const nextGlobe = globeOpacity > 0.35 && keyboardOpacity < 0.4 && crystalOpacity < 0.35
+    if (nextGlobe !== globeActiveRef.current) {
+      globeActiveRef.current = nextGlobe
+      setGlobeActive(nextGlobe)
+    }
+    const nextKeyboard = keyboardOpacity > 0.35 && crystalOpacity < 0.4
+    if (nextKeyboard !== keyboardActiveRef.current) {
+      keyboardActiveRef.current = nextKeyboard
+      setKeyboardActive(nextKeyboard)
+    }
+    const nextCrystal = crystalOpacity > 0.4
+    if (nextCrystal !== crystalActiveRef.current) {
+      crystalActiveRef.current = nextCrystal
+      setCrystalActive(nextCrystal)
+    }
+
+    const idx = crystalIndex(next)
+    if (idx >= 0 && idx !== activeCrystalRef.current) {
+      activeCrystalRef.current = idx
+      setActiveCrystal(idx)
+    }
+  }, [])
 
   useEffect(() => {
-    let frame = 0
-    let previousTime = performance.now()
-    const animate = (time: number) => {
-      const current = renderedProgressRef.current
+    let raf = 0
+    let running = true
+
+    const tick = () => {
+      if (!running) return
       const target = targetProgressRef.current
-      const deltaSeconds = Math.min((time - previousTime) / 1000, 0.05)
-      previousTime = time
-      const maxStep = MORPH_SPEED * deltaSeconds
-      const distance = target - current
-      const next = Math.abs(distance) <= maxStep ? target : current + Math.sign(distance) * maxStep
-      renderedProgressRef.current = next
-      const progress = next
-      if (introImageRef.current) {
-        introImageRef.current.style.opacity = String(clamp(1 - progress / 0.92, 0, 1))
-        introImageRef.current.style.transform = 'scale(' + (1 + progress * 0.018) + ')'
+      const current = renderedProgressRef.current
+      const delta = target - current
+      if (Math.abs(delta) > 0.00008) {
+        renderedProgressRef.current = current + delta * Math.min(1, MORPH_SPEED * 0.085)
+        applyProgress(renderedProgressRef.current)
+        raf = requestAnimationFrame(tick)
+      } else {
+        renderedProgressRef.current = target
+        applyProgress(target)
+        raf = 0
       }
-      const globeOpacity = clamp(1 - Math.abs(progress - 1) / 0.32, 0, 1)
-      const keyboardOpacity = clamp(1 - Math.abs(progress - 2) / 0.32, 0, 1)
-      const crystalOpacity = clamp((progress - 2.45) / 0.35, 0, 1)
-      if (globeCaptionRef.current) {
-        globeCaptionRef.current.style.opacity = String(globeOpacity)
-        globeCaptionRef.current.style.transform = 'translate3d(0,' + (12 - globeOpacity * 12) + 'px,0)'
-      }
-      if (keyboardCaptionRef.current) {
-        keyboardCaptionRef.current.style.opacity = String(keyboardOpacity * (1 - crystalOpacity))
-        keyboardCaptionRef.current.style.transform = 'translate3d(0,' + (20 - keyboardOpacity * 20) + 'px,0)'
-      }
-      if (crystalCaptionRef.current) {
-        crystalCaptionRef.current.style.opacity = String(crystalOpacity)
-        crystalCaptionRef.current.style.transform = 'translate3d(0,' + (16 - crystalOpacity * 16) + 'px,0)'
-      }
-      const nextGlobe = globeOpacity > 0.35
-      if (nextGlobe !== globeActiveRef.current) {
-        globeActiveRef.current = nextGlobe
-        setGlobeActive(nextGlobe)
-      }
-      const nextKeyboard = keyboardOpacity > 0.35 && crystalOpacity < 0.4
-      if (nextKeyboard !== keyboardActiveRef.current) {
-        keyboardActiveRef.current = nextKeyboard
-        setKeyboardActive(nextKeyboard)
-      }
-      const nextCrystal = crystalOpacity > 0.4
-      if (nextCrystal !== crystalActiveRef.current) {
-        crystalActiveRef.current = nextCrystal
-        setCrystalActive(nextCrystal)
-      }
-      if (Math.abs(target - next) >= 0.0001) frame = requestAnimationFrame(animate)
-      else frame = 0
     }
-    wakeAnimationRef.current = () => {
-      if (frame === 0) frame = requestAnimationFrame(animate)
-    }
-    wakeAnimationRef.current()
-    return () => {
-      if (frame) cancelAnimationFrame(frame)
-      frame = 0
-      wakeAnimationRef.current = null
-    }
-  }, [])
 
-  useEffect(() => {
-    if (phase !== 'intro') return
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault()
-      const normalized =
-        event.deltaMode === WheelEvent.DOM_DELTA_LINE
-          ? event.deltaY * 16
-          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-            ? event.deltaY * window.innerHeight
-            : event.deltaY
-      setTargetProgress(normalized, DESKTOP_SENSITIVITY)
+    const wake = () => {
+      if (!raf) raf = requestAnimationFrame(tick)
     }
-    const onTouchStart = (event: TouchEvent) => {
-      lastTouchY.current = event.touches[0]?.clientY ?? 0
-    }
-    const onTouchMove = (event: TouchEvent) => {
-      const currentY = event.touches[0]?.clientY ?? lastTouchY.current
-      const delta = lastTouchY.current - currentY
-      lastTouchY.current = currentY
-      event.preventDefault()
-      setTargetProgress(delta, TOUCH_SENSITIVITY)
-    }
-    const onTouchEnd = () => {
-      if (lastDirectionRef.current !== 0 && phaseRef.current === 'intro') scheduleDirectionalSnap(lastDirectionRef.current)
-    }
-    window.addEventListener('wheel', onWheel, { passive: false })
-    window.addEventListener('touchstart', onTouchStart, { passive: true })
-    window.addEventListener('touchmove', onTouchMove, { passive: false })
-    window.addEventListener('touchend', onTouchEnd, { passive: true })
-    window.addEventListener('touchcancel', onTouchEnd, { passive: true })
-    return () => {
-      window.removeEventListener('wheel', onWheel)
-      window.removeEventListener('touchstart', onTouchStart)
-      window.removeEventListener('touchmove', onTouchMove)
-      window.removeEventListener('touchend', onTouchEnd)
-      window.removeEventListener('touchcancel', onTouchEnd)
-      if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
-    }
-  }, [phase, beginExit])
+    wakeAnimationRef.current = wake
 
-  useEffect(() => {
-    if (phase !== 'hub') return
-    const onWheel = (event: WheelEvent) => {
-      const atTop = window.scrollY <= 4
-      if (!atTop || event.deltaY >= 0) {
-        if (event.deltaY > 0) returnAccumRef.current = 0
-        return
-      }
-      event.preventDefault()
-      const normalized =
-        event.deltaMode === WheelEvent.DOM_DELTA_LINE
-          ? event.deltaY * 16
-          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-            ? event.deltaY * window.innerHeight
-            : event.deltaY
-      returnAccumRef.current += Math.abs(normalized)
-      if (returnAccumRef.current >= EXIT_SCROLL_THRESHOLD) beginReturn()
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0
+      if (dir !== 0) scheduleDirectionalSnap(dir)
+      targetProgressRef.current = clamp(
+        targetProgressRef.current + e.deltaY * DESKTOP_SENSITIVITY,
+        0,
+        MAX_PROGRESS,
+      )
+      wake()
     }
-    let lastY = 0
+
     const onTouchStart = (e: TouchEvent) => {
-      lastY = e.touches[0]?.clientY ?? 0
+      lastTouchY.current = e.touches[0]?.clientY ?? 0
     }
     const onTouchMove = (e: TouchEvent) => {
-      const y = e.touches[0]?.clientY ?? lastY
-      const delta = lastY - y
-      lastY = y
-      const atTop = window.scrollY <= 4
-      if (!atTop || delta >= 0) {
-        if (delta > 0) returnAccumRef.current = 0
-        return
-      }
-      e.preventDefault()
-      returnAccumRef.current += Math.abs(delta)
-      if (returnAccumRef.current >= EXIT_SCROLL_THRESHOLD * 0.7) beginReturn()
+      const y = e.touches[0]?.clientY ?? lastTouchY.current
+      const dy = lastTouchY.current - y
+      lastTouchY.current = y
+      const dir = dy > 0 ? 1 : dy < 0 ? -1 : 0
+      if (dir !== 0) scheduleDirectionalSnap(dir)
+      targetProgressRef.current = clamp(
+        targetProgressRef.current + dy * TOUCH_SENSITIVITY,
+        0,
+        MAX_PROGRESS,
+      )
+      wake()
     }
+
     window.addEventListener('wheel', onWheel, { passive: false })
     window.addEventListener('touchstart', onTouchStart, { passive: true })
-    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchmove', onTouchMove, { passive: true })
+
+    applyProgress(0)
+    wake()
+
     return () => {
+      running = false
+      if (raf) cancelAnimationFrame(raf)
+      if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
       window.removeEventListener('wheel', onWheel)
       window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouchMove)
     }
-  }, [phase, beginReturn])
+  }, [applyProgress, scheduleDirectionalSnap])
 
   useEffect(() => {
-    document.body.style.overflow = phase === 'hub' ? '' : 'hidden'
-    document.body.style.overscrollBehavior = phase === 'hub' ? 'auto' : 'none'
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehavior = 'none'
     return () => {
       document.body.style.overflow = ''
       document.body.style.overscrollBehavior = ''
     }
-  }, [phase])
-
-  useEffect(() => () => {
-    if (exitRafRef.current) cancelAnimationFrame(exitRafRef.current)
   }, [])
 
-  const showIntro = phase === 'intro' || phase === 'exiting'
-  const hint =
-    phase === 'exiting'
-      ? 'ENTERING'
-      : crystalActive
-        ? 'CLICK CRYSTAL · SCROLL FOR MORE'
-        : keyboardActive
-          ? 'SCROLL TO CRYSTAL'
-          : 'SCROLL TO MORPH'
+  useEffect(() => {
+    if (!modalOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setModalOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [modalOpen])
+
+  const crystal = CRYSTALS[activeCrystal]
+  const totalSteps = 3 + CRYSTALS.length
+  const stepIndex = crystalActive ? 3 + activeCrystal : keyboardActive ? 2 : globeActive ? 1 : 0
+  const hint = crystalActive ? 'Click crystal · scroll for next' : 'Scroll'
 
   return (
-    <div className="site">
-      {showIntro && (
-        <section
-          ref={introStageRef}
-          className="intro-stage"
-          aria-label="b1o particle intro"
-          style={{
-            opacity: phase === 'exiting' ? 1 - exitT : 1,
-            pointerEvents: phase === 'exiting' ? 'none' : undefined,
-          }}
-        >
-          <div
-            ref={introImageRef}
-            className="intro-image"
-            style={{
-              backgroundImage: `linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.78) 70%, #050505 100%), url('${palatImage}')`,
-            }}
-          />
-          <div className="intro-vignette" />
-          <ParticleMorph images={particleImages} progressRef={renderedProgressRef} particleDensity={1} className="particle-canvas" />
-          {crystalActive && phase === 'intro' && (
-            <button type="button" className="crystal-hit" aria-label="Open ChatGPT crystal" onClick={() => setCrystalOpen(true)} />
-          )}
-          <div className="intro-copy">
-            <div ref={globeCaptionRef} className="morph-caption morph-caption-globe" style={{ opacity: 0 }}>
-              <DecryptedText text="AI is not enemy, it's tool" animateOn="active" active={globeActive} sequential speed={28} revealDirection="start" parentClassName="decrypted-caption" encryptedClassName="decrypted-encrypted" />
-            </div>
-            <div ref={keyboardCaptionRef} className="morph-caption morph-caption-keyboard" style={{ opacity: 0 }}>
-              <DecryptedText text="I use AI as tool, and here's how I do it..." animateOn="active" active={keyboardActive} sequential speed={26} revealDirection="start" parentClassName="decrypted-caption" encryptedClassName="decrypted-encrypted" />
-            </div>
-            <div ref={crystalCaptionRef} className="morph-caption morph-caption-crystal" style={{ opacity: 0 }}>
-              <DecryptedText text="ChatGPT — initial build" animateOn="active" active={crystalActive} sequential speed={26} revealDirection="start" parentClassName="decrypted-caption" encryptedClassName="decrypted-encrypted" />
-            </div>
-          </div>
-          <div className="intro-ui">
-            <span className="intro-index">{crystalActive ? '04 / 04' : keyboardActive ? '03 / 04' : globeActive ? '02 / 04' : '01 / 04'}</span>
-            <span className="intro-hint">{hint}</span>
-          </div>
-        </section>
-      )}
-      {phase === 'hub' && (
-        <div className="hub-enter">
-          <MenuHub onBackToIntro={beginReturn} skipFirst="ChatGPT" />
+    <div className="app-shell">
+      <section className="intro-stage" aria-label="Intro morph">
+        <div ref={introImageRef} className="intro-photo" style={{ opacity: 1 }}>
+          <img src={palatImage} alt="" draggable={false} />
         </div>
-      )}
-      {crystalOpen && (
-        <div className="crystal-modal" role="dialog" aria-modal="true" aria-label="ChatGPT">
-          <button type="button" className="crystal-modal-backdrop" aria-label="Close" onClick={() => setCrystalOpen(false)} />
+        <ParticleMorph
+          images={particleImages}
+          progressRef={morphProgressRef}
+          particleDensity={1}
+          className="particle-canvas"
+        />
+        {crystalActive && (
+          <button
+            type="button"
+            className="crystal-hit"
+            aria-label={`Open ${crystal.id}`}
+            onClick={() => setModalOpen(true)}
+          />
+        )}
+        <div className="intro-copy">
+          <div ref={globeCaptionRef} className="morph-caption morph-caption-globe" style={{ opacity: 0 }}>
+            <DecryptedText
+              text="AI is not enemy, it's tool"
+              animateOn="active"
+              active={globeActive}
+              sequential
+              speed={28}
+              revealDirection="start"
+              parentClassName="decrypted-caption"
+              encryptedClassName="decrypted-encrypted"
+            />
+          </div>
+          <div ref={keyboardCaptionRef} className="morph-caption morph-caption-keyboard" style={{ opacity: 0 }}>
+            <DecryptedText
+              text="I use AI as tool, and here's how I do it..."
+              animateOn="active"
+              active={keyboardActive}
+              sequential
+              speed={26}
+              revealDirection="start"
+              parentClassName="decrypted-caption"
+              encryptedClassName="decrypted-encrypted"
+            />
+          </div>
+          <div ref={crystalCaptionRef} className="morph-caption morph-caption-crystal" style={{ opacity: 0 }}>
+            <DecryptedText
+              key={crystal.id}
+              text={crystal.caption}
+              animateOn="active"
+              active={crystalActive}
+              sequential
+              speed={26}
+              revealDirection="start"
+              parentClassName="decrypted-caption"
+              encryptedClassName="decrypted-encrypted"
+            />
+          </div>
+        </div>
+        <div className="intro-ui">
+          <span className="intro-index">
+            {String(stepIndex + 1).padStart(2, '0')} / {String(totalSteps).padStart(2, '0')}
+          </span>
+          <span className="intro-hint">{hint}</span>
+        </div>
+      </section>
+
+      {modalOpen && (
+        <div className="crystal-modal" role="dialog" aria-modal="true" aria-label={crystal.id}>
+          <button
+            type="button"
+            className="crystal-modal-backdrop"
+            aria-label="Close"
+            onClick={() => setModalOpen(false)}
+          />
           <div className="crystal-modal-panel">
             <div className="crystal-modal-bar">
-              <span className="crystal-modal-name">ChatGPT</span>
-              <button type="button" className="crystal-modal-close" onClick={() => setCrystalOpen(false)}>Close</button>
+              <span className="crystal-modal-name">{crystal.id}</span>
+              <button type="button" className="crystal-modal-close" onClick={() => setModalOpen(false)}>
+                Close
+              </button>
             </div>
             <div className="crystal-modal-body">
-              <MenuHub embedModel="ChatGPT" />
+              {(crystal.id === 'ChatGPT' || crystal.id === 'Grok' || crystal.id === 'Gemini') && crystal.leaf && (
+                <AIStack focusModel={crystal.id} defaultLeaf={crystal.leaf} />
+              )}
+              {crystal.id === 'Work' && (
+                <div className="menu-hub-work">
+                  <p className="menu-hub-lead">Real products and experiments — interfaces, motion, systems.</p>
+                  <div className="hub-project-grid">
+                    {projects.map((project, index) => (
+                      <a
+                        className="hub-project"
+                        href={project.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        key={project.name}
+                      >
+                        <div className="hub-project-top">
+                          <span className="hub-project-num">0{index + 1}</span>
+                          <span className="hub-project-arrow" aria-hidden="true">
+                            ↗
+                          </span>
+                        </div>
+                        <h3>{project.name}</h3>
+                        <p>{project.type}</p>
+                        <span className="hub-project-stack">{project.stack}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {crystal.id === 'Contact' && (
+                <div className="menu-hub-contact">
+                  <p className="menu-hub-lead">Open a channel — code, hire, or just say hi.</p>
+                  <div className="hub-contact-grid">
+                    {contacts.map((c) => (
+                      <a className="hub-contact-card" href={c.href} target="_blank" rel="noreferrer" key={c.name}>
+                        <span className="hub-contact-icon">
+                          {c.Logo ? <c.Logo size={22} /> : <span className="hub-contact-letter">F</span>}
+                        </span>
+                        <span className="hub-contact-name">{c.name}</span>
+                        <span className="hub-contact-desc">{c.desc}</span>
+                        <span className="hub-contact-go">Open ↗</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
