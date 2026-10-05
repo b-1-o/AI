@@ -40,7 +40,7 @@ function selectEvenly(points: Point[], count: number): Point[] {
   })
 }
 
-function sampleImage(src: string, size = 360): Promise<Point[]> {
+function sampleImage(src: string, size = 720): Promise<Point[]> {
   return new Promise((resolve, reject) => {
     const image = new Image()
 
@@ -72,12 +72,10 @@ function sampleImage(src: string, size = 360): Promise<Point[]> {
 
       const pixels = ctx.getImageData(0, 0, size, size).data
       const candidates: Point[] = []
-      const stride = 2
 
-      for (let y = 0; y < size; y += stride) {
-        const row = y * size
-        for (let x = 0; x < size; x += stride) {
-          const index = (row + x) * 4
+      for (let y = 0; y < size; y += 1) {
+        for (let x = 0; x < size; x += 1) {
+          const index = (y * size + x) * 4
           const brightness =
             (pixels[index] + pixels[index + 1] + pixels[index + 2]) / (255 * 3)
 
@@ -207,15 +205,6 @@ const fragmentShader = [
   '}',
 ].join('\n')
 
-function adaptiveParticleCount(density: number) {
-  const w = typeof window !== 'undefined' ? window.innerWidth : 1200
-  const cores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 4) : 4
-  let base = w < 480 ? 2200 : w < 760 ? 3200 : w < 1200 ? 4500 : 5800
-  if (cores <= 4) base = Math.round(base * 0.72)
-  if (cores <= 2) base = Math.round(base * 0.55)
-  return Math.max(1200, Math.round(base * density))
-}
-
 export default function ParticleMorph({
   images,
   progressRef,
@@ -251,7 +240,9 @@ export default function ParticleMorph({
     let idleFrames = 0
     const IDLE_THRESHOLD = 90
 
-    const particleCount = adaptiveParticleCount(particleDensity)
+    const particleCount = Math.round(
+      (window.innerWidth < 760 ? 5000 : 8500) * particleDensity,
+    )
 
     const setAttribute = (program: WebGLProgram, name: string, values: Float32Array, size: number) => {
       const location = gl.getAttribLocation(program, name)
@@ -268,7 +259,7 @@ export default function ParticleMorph({
     }
 
     const start = async () => {
-      const loaded = await Promise.all(images.map((src) => sampleImage(src, 360)))
+      const loaded = await Promise.all(images.map((src) => sampleImage(src)))
       if (disposed) return () => {}
 
       const prepared = loaded.map((points) => selectEvenly(points, particleCount))
