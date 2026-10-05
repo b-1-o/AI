@@ -451,6 +451,9 @@ function App() {
       {modalOpen && (
         <div className="crystal-inline" role="dialog" aria-modal="true" aria-label={crystal.id}>
           <button type="button" className="crystal-inline-dismiss" aria-label="Close" onClick={closePanel} />
+          <button type="button" className="crystal-inline-mobile-close" aria-label={`Close ${crystal.id}`} onClick={closePanel}>
+            <span aria-hidden="true">×</span>
+          </button>
           <div className={`crystal-inline-content${panelReady ? ' crystal-inline-content--in' : ''}`}>
               {(crystal.id === 'ChatGPT' || crystal.id === 'Grok' || crystal.id === 'Gemini') && crystal.leaf && (
                 <AIStack focusModel={crystal.id} defaultLeaf={crystal.leaf} />
