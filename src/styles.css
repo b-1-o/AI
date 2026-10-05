@@ -209,7 +209,6 @@ body, canvas { overscroll-behavior: none; }
 .contact-row a { color: rgba(244,244,242,0.48); transition: color 180ms ease; }
 .contact-row a:hover { color: #fff; }
 
-/* AI Stack panel */
 .ai-stack {
   display: grid;
   grid-template-columns: minmax(200px, 280px) 1fr;
@@ -299,7 +298,6 @@ body, canvas { overscroll-behavior: none; }
   background: rgba(255,255,255,0.02);
 }
 
-/* Menu Hub */
 .menu-hub {
   min-height: 100vh;
   display: flex;
@@ -386,6 +384,22 @@ body, canvas { overscroll-behavior: none; }
 .menu-hub-ai .ai-stack {
   min-height: 0;
   gap: 28px 36px;
+}
+
+.hub-enter {
+  min-height: 100vh;
+  animation: hub-fade-in 700ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes hub-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 900px) {
