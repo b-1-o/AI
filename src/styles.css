@@ -147,7 +147,9 @@ body, canvas { overscroll-behavior: none; }
   border: none !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
-  max-width: min(520px, 88vw);
+  width: min(860px, 94vw) !important;
+  max-width: min(860px, 94vw) !important;
+  max-height: min(82vh, 920px);
   animation: crystal-panel-ghost-in 700ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 @keyframes crystal-panel-ghost-in {
@@ -157,6 +159,19 @@ body, canvas { overscroll-behavior: none; }
 .crystal-modal-panel--ghost .crystal-modal-bar {
   background: transparent;
   border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 18px 28px;
+}
+.crystal-modal-panel--ghost .crystal-modal-body {
+  padding: 20px 28px 40px;
+}
+.crystal-modal-body {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.45s ease 0.15s, transform 0.45s ease 0.15s;
+}
+.crystal-modal-body--in {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .ai-stack {
@@ -164,6 +179,12 @@ body, canvas { overscroll-behavior: none; }
   grid-template-columns: minmax(180px, 260px) 1fr;
   gap: 28px 32px;
   align-items: start;
+}
+.ai-stack--focus {
+  grid-template-columns: minmax(200px, 240px) 1fr;
+  gap: 32px 40px;
+  padding: 8px 4px 12px;
+  max-width: 100%;
 }
 .ai-stack-panel {
   position: relative;
@@ -177,6 +198,16 @@ body, canvas { overscroll-behavior: none; }
   box-shadow: 0 0 0 1px rgba(0,0,0,0.4) inset, 0 24px 48px rgba(0,0,0,0.35);
   animation: ai-panel-in 420ms cubic-bezier(0.23, 1, 0.32, 1);
   backdrop-filter: blur(12px);
+}
+.ai-stack--focus .ai-stack-panel {
+  padding: 32px 36px 36px;
+  min-height: 280px;
+  border-radius: 20px;
+  background:
+    linear-gradient(150deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 45%, transparent 75%),
+    rgba(10, 10, 12, 0.72);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.4);
 }
 .ai-stack-panel-shine {
   position: absolute;
@@ -195,15 +226,19 @@ body, canvas { overscroll-behavior: none; }
   color: rgba(244,244,242,0.9); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
   padding: 6px 10px; border-radius: 999px; font-weight: 500;
 }
+.ai-stack--focus .ai-stack-tag { font-size: 0.62rem; padding: 7px 12px; }
 .ai-stack-role { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(244,244,242,0.42); }
 .ai-stack-title { margin: 0 0 14px; font-size: clamp(1.25rem, 2.2vw, 1.75rem); font-weight: 600; letter-spacing: -0.04em; line-height: 1.2; }
+.ai-stack--focus .ai-stack-title { font-size: clamp(1.45rem, 2.6vw, 2rem); margin-bottom: 16px; max-width: 22ch; }
 .ai-stack-body { margin: 0 0 24px; color: rgba(244,244,242,0.62); line-height: 1.75; font-size: 0.95rem; max-width: 48ch; }
+.ai-stack--focus .ai-stack-body { font-size: 1.02rem; line-height: 1.8; max-width: 42ch; color: rgba(244,244,242,0.7); margin-bottom: 28px; }
 .ai-stack-connects-label { display: block; font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(244,244,242,0.34); margin-bottom: 10px; }
 .ai-stack-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .ai-stack-chip {
   font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.03em; padding: 8px 12px; border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.1); color: rgba(244,244,242,0.82); background: rgba(255,255,255,0.04);
 }
+.ai-stack--focus .ai-stack-chip { padding: 10px 14px; font-size: 0.72rem; }
 .ai-stack-chip:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18); }
 .ai-stack-chip--logo { display: inline-flex; align-items: center; gap: 8px; }
 .brand-logo { display: block; flex-shrink: 0; color: rgba(244, 244, 242, 0.9); }
@@ -234,7 +269,7 @@ body, canvas { overscroll-behavior: none; }
 .hub-contact-go { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(244,244,242,0.4); }
 
 @media (max-width: 960px) {
-  .ai-stack { grid-template-columns: 1fr; }
+  .ai-stack, .ai-stack--focus { grid-template-columns: 1fr; }
   .hub-project-grid { grid-template-columns: 1fr; }
   .hub-contact-grid { grid-template-columns: 1fr; }
   .intro-stage { min-height: 560px; }
