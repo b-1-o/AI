@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { getCrystalPoints } from './crystalGeometry'
 
 type Point = { x: number; y: number; strength: number }
 
@@ -134,7 +135,7 @@ const vertexShader = [
   '    local = p - 1.0; from = aBall.xy * 0.80; to = aKeyboard.xy;',
   '    fromStrength = aBall.z; toStrength = aKeyboard.z;',
   '  } else {',
-  '    local = p - 2.0; from = aKeyboard.xy; to = aCrystal.xy * 0.92;',
+  '    local = p - 2.0; from = aKeyboard.xy; to = aCrystal.xy * 1.15;',
   '    fromStrength = aKeyboard.z; toStrength = aCrystal.z;',
   '  }',
   '  float t = quintic(local);',
@@ -221,7 +222,7 @@ export default function ParticleMorph({
     }
 
     const start = async () => {
-      const loaded = await Promise.all(images.map((src) => sampleImage(src)))
+      const loaded = await Promise.all(images.slice(0, 3).map((src) => sampleImage(src)))
       if (disposed) return () => {}
 
       const prepared = loaded.map((points) => selectEvenly(points, particleCount))
@@ -229,28 +230,15 @@ export default function ParticleMorph({
       const ball = new Float32Array(particleCount * 4)
       const keyboard = new Float32Array(particleCount * 4)
       const crystal = new Float32Array(particleCount * 4)
-      const hasCrystal = prepared.length > 3
-      const crystalPts = hasCrystal ? prepared[3] : prepared[2]
 
-      let cxs = 0
-      let cys = 0
-      for (let i = 0; i < particleCount; i += 1) {
-        cxs += crystalPts[i].x
-        cys += crystalPts[i].y
-      }
-      const ccx = cxs / particleCount
-      const ccy = cys / particleCount
-      let maxRx = 0.01
-      for (let i = 0; i < particleCount; i += 1) {
-        maxRx = Math.max(maxRx, Math.abs(crystalPts[i].x - ccx))
-      }
+      const mesh = getCrystalPoints(particleCount)
 
       for (let i = 0; i < particleCount; i += 1) {
         const offset = i * 4
         const b1 = prepared[0][i]
         const ba = prepared[1][i]
         const kb = prepared[2][i]
-        const cr = crystalPts[i]
+        const cr = mesh[i]
 
         b1o[offset] = b1.x
         b1o[offset + 1] = b1.y
@@ -262,15 +250,10 @@ export default function ParticleMorph({
         keyboard[offset + 1] = kb.y
         keyboard[offset + 2] = kb.strength
 
-        const lx = cr.x - ccx
-        const ly = cr.y - ccy
-        crystal[offset] = lx
-        crystal[offset + 1] = ly
-        crystal[offset + 2] = cr.strength
-        const nx = lx / maxRx
-        const depthAbs = Math.sqrt(Math.max(0, 1 - nx * nx)) * (0.22 + cr.strength * 0.3)
-        const side = Math.sin((i + 1) * 12.9898) > 0 ? 1 : -1
-        crystal[offset + 3] = depthAbs * side
+        crystal[offset] = cr.x
+        crystal[offset + 1] = cr.y
+        crystal[offset + 2] = cr.s
+        crystal[offset + 3] = cr.z
 
         const value = Math.sin((i + 1) * 12.9898) * 43758.5453
         keyboard[offset + 3] = value - Math.floor(value)
