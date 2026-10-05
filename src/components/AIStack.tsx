@@ -127,17 +127,31 @@ const MENU: BranchedMenuItem[] = [
   },
 ]
 
-export default function AIStack() {
-  const [active, setActive] = useState('gpt-role')
-  const detail = DETAILS[active] ?? DETAILS['gpt-role']
+type AIStackProps = {
+  focusModel?: string
+  defaultLeaf?: string
+}
+
+export default function AIStack({ focusModel, defaultLeaf }: AIStackProps) {
+  const items = focusModel
+    ? MENU.filter((m) => m.label === focusModel)
+    : MENU
+
+  const initial =
+    defaultLeaf ??
+    items[0]?.children?.[0]?.value ??
+    'gpt-role'
+
+  const [active, setActive] = useState(initial)
+  const detail = DETAILS[active] ?? DETAILS[initial] ?? DETAILS['gpt-role']
 
   return (
     <div className="ai-stack">
       <div className="ai-stack-nav">
         <BranchedMenu
-          items={MENU}
-          defaultOpen={[0, 1, 2]}
-          defaultActive="gpt-role"
+          items={items}
+          defaultOpen={[0]}
+          defaultActive={initial}
           onSelect={(value) => setActive(value)}
           color="#f4f4f2"
           accentColor="#f4f4f2"
