@@ -1,4 +1,4 @@
-/** Faceted crystal mesh → surface points. Solid body + light edge outline. */
+/** Faceted crystal: dense face fill + dedicated edge outline points. */
 
 export type CrystalPt = { x: number; y: number; z: number; s: number }
 
@@ -19,15 +19,11 @@ function lerp(a: Vec3, b: Vec3, t: number): Vec3 {
 function len(a: Vec3): number {
   return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) || 1
 }
-function normalize(a: Vec3): Vec3 {
-  const L = len(a)
-  return [a[0] / L, a[1] / L, a[2] / L]
-}
 function cross(a: Vec3, b: Vec3): Vec3 {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
 }
 
-function buildCrystalVertices(): { verts: Vec3[]; faces: number[][] } {
+function buildCrystalVertices(): { verts: Vec3[]; faces: number[][]; edgeList: [number, number][] } {
   const sides = 6
   const verts: Vec3[] = []
   verts.push([0, 0.48, 0])
@@ -69,24 +65,37 @@ function buildCrystalVertices(): { verts: Vec3[]; faces: number[][] } {
     faces.push([girdle[i], lower[(i + 1) % sides], lower[i]])
   }
   for (let i = 0; i < sides; i++) faces.push([lower[i], lower[(i + 1) % sides], 25])
-  return { verts, faces }
+
+  const edgeSet = new Set<string>()
+  const edgeList: [number, number][] = []
+  const addEdge = (i: number, j: number) => {
+    const a = Math.min(i, j)
+    const b = Math.max(i, j)
+    const key = a + '-' + b
+    if (edgeSet.has(key)) return
+    edgeSet.add(key)
+    edgeList.push([a, b])
+  }
+  for (let i = 0; i < sides; i++) {
+    addEdge(0, crown[i])
+    addEdge(crown[i], crown[(i + 1) % sides])
+    addEdge(crown[i], mid[i])
+    addEdge(mid[i], mid[(i + 1) % sides])
+    addEdge(mid[i], girdle[i])
+    addEdge(girdle[i], girdle[(i + 1) % sides])
+    addEdge(girdle[i], lower[i])
+    addEdge(lower[i], lower[(i + 1) % sides])
+    addEdge(lower[i], 25)
+  }
+  return { verts, faces, edgeList }
 }
 
-function sampleTriangle(
-  a: Vec3,
-  b: Vec3,
-  c: Vec3,
-  faceDensity: number,
-  edgeDensity: number,
-  out: CrystalPt[],
-) {
+function sampleFace(a: Vec3, b: Vec3, c: Vec3, density: number, out: CrystalPt[]) {
   const ab = sub(b, a)
   const ac = sub(c, a)
   const area = 0.5 * len(cross(ab, ac))
-  const nFace = Math.max(2, Math.floor(area * faceDensity * 720))
-  const nEdge = Math.max(2, Math.floor(len(ab) * edgeDensity * 22))
-
-  for (let i = 0; i < nFace; i++) {
+  const n = Math.max(2, Math.floor(area * density * 680))
+  for (let i = 0; i < n; i++) {
     let u = Math.random()
     let v = Math.random()
     if (u + v > 1) {
@@ -94,20 +103,23 @@ function sampleTriangle(
       v = 1 - v
     }
     const p = add(a, add(scale(ab, u), scale(ac, v)))
-    out.push({ x: p[0], y: p[1], z: p[2], s: 0.35 + Math.random() * 0.35 })
+    out.push({ x: p[0], y: p[1], z: p[2], s: 0.28 + Math.random() * 0.32 })
   }
+}
 
-  const edges: [Vec3, Vec3][] = [
-    [a, b],
-    [b, c],
-    [c, a],
-  ]
-  for (const [p0, p1] of edges) {
-    for (let i = 0; i < nEdge; i++) {
-      const t = i / (nEdge - 1 || 1)
-      const p = lerp(p0, p1, t)
-      out.push({ x: p[0], y: p[1], z: p[2], s: 0.88 + Math.random() * 0.12 })
-    }
+function sampleEdge(a: Vec3, b: Vec3, density: number, out: CrystalPt[]) {
+  const L = len(sub(b, a))
+  const n = Math.max(6, Math.floor(L * density * 90))
+  for (let i = 0; i <= n; i++) {
+    const t = i / n
+    const p = lerp(a, b, t)
+    const j = (Math.random() - 0.5) * 0.004
+    out.push({
+      x: p[0] + j * 0.3,
+      y: p[1] + j * 0.2,
+      z: p[2] + j * 0.3,
+      s: 0.92 + Math.random() * 0.08,
+    })
   }
 }
 
@@ -120,25 +132,32 @@ export function getCrystalPoints(count = 5200): CrystalPt[] {
     return Array.from({ length: count }, (_, i) => cached![Math.min(cached!.length - 1, Math.floor(i * step))])
   }
 
-  const { verts, faces } = buildCrystalVertices()
-  const raw: CrystalPt[] = []
+  const { verts, faces, edgeList } = buildCrystalVertices()
+  const facesPts: CrystalPt[] = []
+  const edgePts: CrystalPt[] = []
+
   for (const f of faces) {
-    sampleTriangle(verts[f[0]], verts[f[1]], verts[f[2]], 11, 0.85, raw)
+    sampleFace(verts[f[0]], verts[f[1]], verts[f[2]], 10, facesPts)
+  }
+  for (const [i, j] of edgeList) {
+    sampleEdge(verts[i], verts[j], 1.35, edgePts)
   }
 
-  for (let i = raw.length - 1; i > 0; i--) {
+  const edgeBudget = Math.min(edgePts.length, Math.floor(count * 0.22))
+  const faceBudget = count - edgeBudget
+
+  const pick = (src: CrystalPt[], n: number) => {
+    if (src.length <= n) return src.slice()
+    const step = src.length / n
+    return Array.from({ length: n }, (_, i) => src[Math.min(src.length - 1, Math.floor(i * step))])
+  }
+
+  const final = [...pick(edgePts, edgeBudget), ...pick(facesPts, faceBudget)]
+  for (let i = final.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    const tmp = raw[i]
-    raw[i] = raw[j]
-    raw[j] = tmp
-  }
-
-  let final = raw
-  if (raw.length > count) {
-    const step = raw.length / count
-    final = Array.from({ length: count }, (_, i) => raw[Math.min(raw.length - 1, Math.floor(i * step))])
-  } else if (raw.length < count) {
-    final = Array.from({ length: count }, (_, i) => raw[i % raw.length])
+    const tmp = final[i]
+    final[i] = final[j]
+    final[j] = tmp
   }
 
   cached = final
