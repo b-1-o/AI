@@ -1,0 +1,77 @@
+@media (max-width: 720px) {
+  .intro-stage {
+    min-height: 100svh;
+    height: 100svh;
+  }
+
+  .intro-image {
+    inset: -7%;
+  }
+
+  .intro-copy {
+    padding: 0 16px 12svh;
+  }
+
+  .morph-caption {
+    bottom: 11svh;
+    max-width: calc(100vw - 32px);
+    font-size: clamp(0.78rem, 3.3vw, 0.96rem);
+    line-height: 1.45;
+  }
+
+  .intro-ui {
+    left: 16px;
+    right: 16px;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    font-size: 0.56rem;
+  }
+
+  .crystal-hit {
+    width: min(220px, 64vw);
+    height: min(300px, 48svh);
+    top: 47%;
+  }
+
+  .crystal-inline-content {
+    width: min(calc(100vw - 20px), 640px);
+    max-height: 78svh;
+    padding: 4px;
+  }
+
+  .crystal-inline-content .ai-stack-panel {
+    padding: 18px 12px 24px;
+  }
+
+  .crystal-inline-content .ai-stack-title {
+    font-size: clamp(1.35rem, 7vw, 1.85rem);
+  }
+
+  .crystal-inline-content .ai-stack-body {
+    font-size: 0.9rem;
+    line-height: 1.65;
+  }
+
+  .crystal-inline-content .hub-project-grid,
+  .crystal-inline-content .hub-contact-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hub-project {
+    min-height: 126px;
+    padding: 16px;
+  }
+
+  .hub-project h3 {
+    font-size: 1.12rem;
+  }
+
+  .hub-project p,
+  .hub-contact-desc {
+    font-size: 0.8rem;
+  }
+
+  .hub-contact-card {
+    min-height: 118px;
+    padding: 18px;
+  }
+}
