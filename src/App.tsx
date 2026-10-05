@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import DecryptedText from './components/DecryptedText'
 import AIStack from './components/AIStack'
+import './components/CrystalScroll.css'
 import { LogoGitHub, LogoLinkedIn } from './components/Logos'
 import b1oImage from '../assets/b1o.jpg'
 import ballImage from '../assets/ball.jpg'
@@ -64,6 +65,8 @@ function App() {
   const renderedProgressRef = useRef(0)
   const morphProgressRef = useRef(0)
   const dissolveRef = useRef(0)
+  const panelRef = useRef(0)
+  const panelAnimRef = useRef<number | null>(null)
   const dissolveAnimRef = useRef<number | null>(null)
   const lastTouchY = useRef(0)
   const lastDirectionRef = useRef(0)
@@ -87,7 +90,6 @@ function App() {
       const dir = lastDirectionRef.current
       const stops: number[] = [0, BALL_STOP, KEYBOARD_STOP]
       for (let i = 0; i < CRYSTALS.length; i++) stops.push(CRYSTAL_START + i)
-
       let target = current
       if (dir > 0) {
         const next = stops.find((s) => s > current + 0.08)
@@ -156,14 +158,10 @@ function App() {
         const DUR = 900
         const run = (now: number) => {
           const u = Math.min(1, (now - start) / DUR)
-          if (u < 0.45) {
-            dissolveRef.current = u / 0.45
-          } else {
-            dissolveRef.current = 1 - (u - 0.45) / 0.55
-          }
-          if (u < 1) {
-            dissolveAnimRef.current = requestAnimationFrame(run)
-          } else {
+          if (u < 0.45) dissolveRef.current = u / 0.45
+          else dissolveRef.current = 1 - (u - 0.45) / 0.55
+          if (u < 1) dissolveAnimRef.current = requestAnimationFrame(run)
+          else {
             dissolveRef.current = 0
             dissolveAnimRef.current = null
           }
@@ -176,7 +174,6 @@ function App() {
   useEffect(() => {
     let raf = 0
     let running = true
-
     const tick = () => {
       if (!running) return
       const target = targetProgressRef.current
@@ -192,7 +189,6 @@ function App() {
         raf = 0
       }
     }
-
     const wake = () => {
       if (!raf) raf = requestAnimationFrame(tick)
     }
@@ -209,7 +205,6 @@ function App() {
       )
       wake()
     }
-
     const onTouchStart = (e: TouchEvent) => {
       lastTouchY.current = e.touches[0]?.clientY ?? 0
     }
@@ -230,15 +225,14 @@ function App() {
     window.addEventListener('wheel', onWheel, { passive: false })
     window.addEventListener('touchstart', onTouchStart, { passive: true })
     window.addEventListener('touchmove', onTouchMove, { passive: true })
-
     applyProgress(0)
     wake()
-
     return () => {
       running = false
       if (raf) cancelAnimationFrame(raf)
       if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
       if (dissolveAnimRef.current) cancelAnimationFrame(dissolveAnimRef.current)
+      if (panelAnimRef.current) cancelAnimationFrame(panelAnimRef.current)
       window.removeEventListener('wheel', onWheel)
       window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouchMove)
@@ -254,39 +248,68 @@ function App() {
     }
   }, [])
 
+  const animatePanel = useCallback((to: number, onDone?: () => void) => {
+    if (panelAnimRef.current) cancelAnimationFrame(panelAnimRef.current)
+    const from = panelRef.current
+    const start = performance.now()
+    const DUR = 780
+    const run = (now: number) => {
+      const u = Math.min(1, (now - start) / DUR)
+      const s = u * u * (3 - 2 * u)
+      panelRef.current = from + (to - from) * s
+      if (u < 1) panelAnimRef.current = requestAnimationFrame(run)
+      else {
+        panelRef.current = to
+        panelAnimRef.current = null
+        onDone?.()
+      }
+    }
+    panelAnimRef.current = requestAnimationFrame(run)
+  }, [])
+
+  const openPanel = useCallback(() => {
+    setModalOpen(true)
+    panelRef.current = 0
+    animatePanel(1)
+  }, [animatePanel])
+
+  const closePanel = useCallback(() => {
+    animatePanel(0, () => setModalOpen(false))
+  }, [animatePanel])
+
   useEffect(() => {
     if (!modalOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setModalOpen(false)
+      if (e.key === 'Escape') closePanel()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [modalOpen])
+  }, [modalOpen, closePanel])
 
   const crystal = CRYSTALS[activeCrystal]
-  const totalSteps = 3 + CRYSTALS.length
-  const stepIndex = crystalActive ? 3 + activeCrystal : keyboardActive ? 2 : globeActive ? 1 : 0
   const hint = crystalActive ? 'Click crystal · scroll for next' : 'Scroll'
 
   return (
     <div className="app-shell">
       <section className="intro-stage" aria-label="Intro morph">
-        <div ref={introImageRef} className="intro-photo" style={{ opacity: 1 }}>
+        <div ref={introImageRef} className="intro-image" style={{ opacity: 1 }}>
           <img src={palatImage} alt="" draggable={false} />
         </div>
+        <div className="intro-vignette" aria-hidden="true" />
         <ParticleMorph
           images={particleImages}
           progressRef={morphProgressRef}
           dissolveRef={dissolveRef}
+          panelRef={panelRef}
           particleDensity={1}
           className="particle-canvas"
         />
-        {crystalActive && (
+        {crystalActive && !modalOpen && (
           <button
             type="button"
             className="crystal-hit"
             aria-label={`Open ${crystal.id}`}
-            onClick={() => setModalOpen(true)}
+            onClick={() => openPanel()}
           />
         )}
         <div className="intro-copy">
@@ -329,25 +352,17 @@ function App() {
           </div>
         </div>
         <div className="intro-ui">
-          <span className="intro-index">
-            {String(stepIndex + 1).padStart(2, '0')} / {String(totalSteps).padStart(2, '0')}
-          </span>
           <span className="intro-hint">{hint}</span>
         </div>
       </section>
 
       {modalOpen && (
-        <div className="crystal-modal" role="dialog" aria-modal="true" aria-label={crystal.id}>
-          <button
-            type="button"
-            className="crystal-modal-backdrop"
-            aria-label="Close"
-            onClick={() => setModalOpen(false)}
-          />
-          <div className="crystal-modal-panel">
+        <div className="crystal-modal crystal-modal--particle" role="dialog" aria-modal="true" aria-label={crystal.id}>
+          <button type="button" className="crystal-modal-backdrop crystal-modal-backdrop--soft" aria-label="Close" onClick={closePanel} />
+          <div className="crystal-modal-panel crystal-modal-panel--ghost">
             <div className="crystal-modal-bar">
               <span className="crystal-modal-name">{crystal.id}</span>
-              <button type="button" className="crystal-modal-close" onClick={() => setModalOpen(false)}>
+              <button type="button" className="crystal-modal-close" onClick={closePanel}>
                 Close
               </button>
             </div>
@@ -360,18 +375,10 @@ function App() {
                   <p className="menu-hub-lead">Real products and experiments — interfaces, motion, systems.</p>
                   <div className="hub-project-grid">
                     {projects.map((project, index) => (
-                      <a
-                        className="hub-project"
-                        href={project.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        key={project.name}
-                      >
+                      <a className="hub-project" href={project.href} target="_blank" rel="noreferrer" key={project.name}>
                         <div className="hub-project-top">
                           <span className="hub-project-num">0{index + 1}</span>
-                          <span className="hub-project-arrow" aria-hidden="true">
-                            ↗
-                          </span>
+                          <span className="hub-project-arrow" aria-hidden="true">↗</span>
                         </div>
                         <h3>{project.name}</h3>
                         <p>{project.type}</p>
