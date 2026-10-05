@@ -241,7 +241,7 @@ function App() {
         <ParticleMorph
           images={particleImages}
           progressRef={renderedProgressRef}
-          particleDensity={1}
+          particleDensity={0.85}
           className="particle-canvas"
         />
 
@@ -275,7 +275,7 @@ function App() {
           <h1>
             AI is not the product.
             <br />
-            <span>It&apos;s part of the process.</span>
+            <span>It's part of the process.</span>
           </h1>
           <p>
             I use AI as a tool for research, prototyping, implementation, debugging and iteration.
@@ -336,7 +336,7 @@ function App() {
 
         <section className="contact section-pad">
           <div className="eyebrow">05 — CONTACT</div>
-          <h2>Let&apos;s build something worth remembering.</h2>
+          <h2>Let's build something worth remembering.</h2>
           <div className="contact-row">
             <a href="https://github.com/b-1-o" target="_blank" rel="noreferrer">GitHub ↗</a>
             <a href="https://www.linkedin.com/in/b1o" target="_blank" rel="noreferrer">LinkedIn ↗</a>
