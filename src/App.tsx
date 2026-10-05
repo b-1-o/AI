@@ -262,7 +262,13 @@ function App() {
         return
       }
 
-      if (modalOpenRef.current) return
+      if (modalOpenRef.current) {
+        if (dir < 0 && activeCrystalRef.current > 0) {
+          closePanel()
+        } else {
+          return
+        }
+      }
 
       targetProgressRef.current = clamp(
         targetProgressRef.current + e.deltaY * DESKTOP_SENSITIVITY,
@@ -289,7 +295,13 @@ function App() {
         return
       }
 
-      if (modalOpenRef.current) return
+      if (modalOpenRef.current) {
+        if (dir > 0 && activeCrystalRef.current > 0) {
+          closePanel()
+        } else {
+          return
+        }
+      }
 
       targetProgressRef.current = clamp(
         targetProgressRef.current + dy * TOUCH_SENSITIVITY,
