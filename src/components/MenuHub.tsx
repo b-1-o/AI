@@ -113,7 +113,8 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
       <div className="crystal-scroll">
         {SECTIONS.map((s, i) => {
           const p = progress[i] ?? 0
-          const inView = p > 0.08 && p < 0.92
+          // one crystal at a time near viewport center
+          const inView = p > 0.22 && p < 0.78
           return (
             <section
               key={s.id}
@@ -129,7 +130,7 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
               >
                 <DotCrystal
                   progress={p}
-                  spin={0.28 + i * 0.04}
+                  spin={0.55 + i * 0.06}
                   active={inView}
                   seed={s.seed}
                   className="crystal-stage-canvas"
