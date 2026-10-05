@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import DecryptedText from './components/DecryptedText'
 import MenuHub from './components/MenuHub'
@@ -11,15 +11,21 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 const particleImages = [b1oImage, ballImage, keyboardImage]
 
 const BALL_STOP = 1
+const KEYBOARD_END = 2
 const DESKTOP_SENSITIVITY = 0.00105
 const TOUCH_SENSITIVITY = 0.00155
 const MORPH_SPEED = 1.3
 const SNAP_DELAY = 280
+const EXIT_SCROLL_THRESHOLD = 180
+const EXIT_DURATION_MS = 900
+
+type Phase = 'intro' | 'exiting' | 'hub'
 
 function App() {
-  const [isComplete, setIsComplete] = useState(false)
+  const [phase, setPhase] = useState<Phase>('intro')
   const [globeActive, setGlobeActive] = useState(false)
   const [keyboardActive, setKeyboardActive] = useState(false)
+  const [exitT, setExitT] = useState(0)
 
   const targetProgressRef = useRef(0)
   const renderedProgressRef = useRef(0)
@@ -29,10 +35,17 @@ function App() {
   const wakeAnimationRef = useRef<(() => void) | null>(null)
   const globeActiveRef = useRef(false)
   const keyboardActiveRef = useRef(false)
+  const exitAccumRef = useRef(0)
+  const exitStartRef = useRef(0)
+  const exitRafRef = useRef<number | null>(null)
+  const phaseRef = useRef<Phase>('intro')
 
+  const introStageRef = useRef<HTMLElement | null>(null)
   const introImageRef = useRef<HTMLDivElement | null>(null)
   const globeCaptionRef = useRef<HTMLDivElement | null>(null)
   const keyboardCaptionRef = useRef<HTMLDivElement | null>(null)
+
+  phaseRef.current = phase
 
   const scheduleDirectionalSnap = (direction: number) => {
     lastDirectionRef.current = direction
@@ -42,11 +55,13 @@ function App() {
     }
 
     snapTimerRef.current = window.setTimeout(() => {
+      if (phaseRef.current !== 'intro') return
+
       const current = targetProgressRef.current
       const dir = lastDirectionRef.current
 
       if (dir > 0) {
-        targetProgressRef.current = current < BALL_STOP ? BALL_STOP : 2
+        targetProgressRef.current = current < BALL_STOP ? BALL_STOP : KEYBOARD_END
       } else if (dir < 0) {
         targetProgressRef.current = current > BALL_STOP ? BALL_STOP : 0
       }
@@ -56,14 +71,62 @@ function App() {
     }, SNAP_DELAY)
   }
 
+  const beginExit = useCallback(() => {
+    if (phaseRef.current !== 'intro') return
+    phaseRef.current = 'exiting'
+    setPhase('exiting')
+    exitStartRef.current = performance.now()
+
+    const tick = (now: number) => {
+      const t = clamp((now - exitStartRef.current) / EXIT_DURATION_MS, 0, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setExitT(eased)
+
+      if (introStageRef.current) {
+        introStageRef.current.style.opacity = String(1 - eased)
+      }
+
+      if (t < 1) {
+        exitRafRef.current = requestAnimationFrame(tick)
+      } else {
+        exitRafRef.current = null
+        phaseRef.current = 'hub'
+        setPhase('hub')
+        setExitT(1)
+      }
+    }
+
+    exitRafRef.current = requestAnimationFrame(tick)
+  }, [])
+
   const setTargetProgress = (delta: number, sensitivity: number) => {
+    if (phaseRef.current !== 'intro') return
+
     const direction = Math.sign(delta)
     if (!direction) return
+
+    const atKeyboard = renderedProgressRef.current >= 1.92
+
+    if (atKeyboard && direction > 0) {
+      exitAccumRef.current += Math.abs(delta)
+      if (exitAccumRef.current >= EXIT_SCROLL_THRESHOLD) {
+        beginExit()
+        return
+      }
+      targetProgressRef.current = KEYBOARD_END
+      scheduleDirectionalSnap(direction)
+      wakeAnimationRef.current?.()
+      return
+    }
+
+    if (direction < 0) {
+      exitAccumRef.current = 0
+    }
 
     targetProgressRef.current = clamp(
       targetProgressRef.current + delta * sensitivity,
       0,
-      2,
+      KEYBOARD_END,
     )
 
     scheduleDirectionalSnap(direction)
@@ -72,7 +135,6 @@ function App() {
 
   useEffect(() => {
     let frame = 0
-    let completed = false
     let previousTime = performance.now()
 
     const animate = (time: number) => {
@@ -124,13 +186,6 @@ function App() {
         setKeyboardActive(nextKeyboard)
       }
 
-      const nextCompleted = progress >= 1.995
-
-      if (nextCompleted !== completed) {
-        completed = nextCompleted
-        setIsComplete(nextCompleted)
-      }
-
       const settled = Math.abs(target - next) < 0.0001
 
       if (!settled) {
@@ -154,7 +209,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (isComplete) return
+    if (phase !== 'intro') return
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
@@ -182,7 +237,7 @@ function App() {
     }
 
     const onTouchEnd = () => {
-      if (lastDirectionRef.current !== 0) {
+      if (lastDirectionRef.current !== 0 && phaseRef.current === 'intro') {
         scheduleDirectionalSnap(lastDirectionRef.current)
       }
     }
@@ -204,22 +259,53 @@ function App() {
         window.clearTimeout(snapTimerRef.current)
       }
     }
-  }, [isComplete])
+  }, [phase, beginExit])
 
   useEffect(() => {
-    document.body.style.overflow = isComplete ? '' : 'hidden'
-    document.body.style.overscrollBehavior = isComplete ? 'auto' : 'none'
+    document.body.style.overflow = phase === 'hub' ? '' : 'hidden'
+    document.body.style.overscrollBehavior = phase === 'hub' ? 'auto' : 'none'
 
     return () => {
       document.body.style.overflow = ''
       document.body.style.overscrollBehavior = ''
     }
-  }, [isComplete])
+  }, [phase])
+
+  useEffect(() => {
+    return () => {
+      if (exitRafRef.current) cancelAnimationFrame(exitRafRef.current)
+    }
+  }, [])
+
+  const backToIntro = () => {
+    if (exitRafRef.current) cancelAnimationFrame(exitRafRef.current)
+    exitAccumRef.current = 0
+    setExitT(0)
+    targetProgressRef.current = 0
+    renderedProgressRef.current = 0
+    setGlobeActive(false)
+    setKeyboardActive(false)
+    globeActiveRef.current = false
+    keyboardActiveRef.current = false
+    phaseRef.current = 'intro'
+    setPhase('intro')
+    requestAnimationFrame(() => wakeAnimationRef.current?.())
+  }
+
+  const showIntro = phase === 'intro' || phase === 'exiting'
 
   return (
     <div className="site">
-      {!isComplete && (
-        <section className="intro-stage" aria-label="b1o particle intro">
+      {showIntro && (
+        <section
+          ref={introStageRef}
+          className="intro-stage"
+          aria-label="b1o particle intro"
+          style={{
+            opacity: phase === 'exiting' ? 1 - exitT : 1,
+            pointerEvents: phase === 'exiting' ? 'none' : undefined,
+          }}
+        >
           <div
             ref={introImageRef}
             className="intro-image"
@@ -274,25 +360,22 @@ function App() {
 
           <div className="intro-ui">
             <span className="intro-index">01 / 03</span>
-            <span className="intro-hint">SCROLL TO MORPH</span>
+            <span className="intro-hint">
+              {phase === 'exiting'
+                ? 'ENTERING'
+                : keyboardActive
+                  ? 'SCROLL TO CONTINUE'
+                  : 'SCROLL TO MORPH'}
+            </span>
           </div>
         </section>
       )}
 
-      {isComplete ? (
-        <MenuHub
-          onBackToIntro={() => {
-            setIsComplete(false)
-            targetProgressRef.current = 0
-            renderedProgressRef.current = 0
-            setGlobeActive(false)
-            setKeyboardActive(false)
-            globeActiveRef.current = false
-            keyboardActiveRef.current = false
-            wakeAnimationRef.current?.()
-          }}
-        />
-      ) : null}
+      {phase === 'hub' && (
+        <div className="hub-enter">
+          <MenuHub onBackToIntro={backToIntro} />
+        </div>
+      )}
     </div>
   )
 }
