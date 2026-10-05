@@ -140,40 +140,6 @@ body, canvas { overscroll-behavior: none; }
   border-radius: 40% 40% 30% 30%;
 }
 
-.crystal-modal--particle { background: transparent; }
-.crystal-modal-backdrop--soft { background: rgba(0, 0, 0, 0.35); }
-.crystal-modal-panel--ghost {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  width: min(860px, 94vw) !important;
-  max-width: min(860px, 94vw) !important;
-  max-height: min(82vh, 920px);
-  animation: crystal-panel-ghost-in 700ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-@keyframes crystal-panel-ghost-in {
-  from { opacity: 0; transform: translateY(18px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-.crystal-modal-panel--ghost .crystal-modal-bar {
-  background: transparent;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  padding: 18px 28px;
-}
-.crystal-modal-panel--ghost .crystal-modal-body {
-  padding: 20px 28px 40px;
-}
-.crystal-modal-body {
-  opacity: 0;
-  transform: translateY(12px);
-  transition: opacity 0.45s ease 0.15s, transform 0.45s ease 0.15s;
-}
-.crystal-modal-body--in {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .ai-stack {
   display: grid;
   grid-template-columns: minmax(180px, 260px) 1fr;
@@ -226,7 +192,6 @@ body, canvas { overscroll-behavior: none; }
   color: rgba(244,244,242,0.9); background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
   padding: 6px 10px; border-radius: 999px; font-weight: 500;
 }
-.ai-stack--focus .ai-stack-tag { font-size: 0.62rem; padding: 7px 12px; }
 .ai-stack-role { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(244,244,242,0.42); }
 .ai-stack-title { margin: 0 0 14px; font-size: clamp(1.25rem, 2.2vw, 1.75rem); font-weight: 600; letter-spacing: -0.04em; line-height: 1.2; }
 .ai-stack--focus .ai-stack-title { font-size: clamp(1.45rem, 2.6vw, 2rem); margin-bottom: 16px; max-width: 22ch; }
@@ -238,7 +203,6 @@ body, canvas { overscroll-behavior: none; }
   font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.03em; padding: 8px 12px; border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.1); color: rgba(244,244,242,0.82); background: rgba(255,255,255,0.04);
 }
-.ai-stack--focus .ai-stack-chip { padding: 10px 14px; font-size: 0.72rem; }
 .ai-stack-chip:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18); }
 .ai-stack-chip--logo { display: inline-flex; align-items: center; gap: 8px; }
 .brand-logo { display: block; flex-shrink: 0; color: rgba(244, 244, 242, 0.9); }
@@ -273,4 +237,86 @@ body, canvas { overscroll-behavior: none; }
   .hub-project-grid { grid-template-columns: 1fr; }
   .hub-contact-grid { grid-template-columns: 1fr; }
   .intro-stage { min-height: 560px; }
+}
+
+/* Content materializes inside particle square — no modal chrome */
+.crystal-inline {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.crystal-inline-dismiss {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.crystal-inline-content {
+  position: relative;
+  z-index: 1;
+  width: min(640px, 86vw);
+  max-height: min(70vh, 720px);
+  overflow: auto;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(20px) scale(0.97);
+  filter: blur(6px);
+  transition:
+    opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1),
+    transform 0.7s cubic-bezier(0.23, 1, 0.32, 1),
+    filter 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+  padding: 8px;
+}
+.crystal-inline-content--in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+.crystal-inline-content .ai-stack--focus {
+  grid-template-columns: 1fr;
+}
+.crystal-inline-content .ai-stack-nav {
+  display: none;
+}
+.crystal-inline-content .ai-stack-panel {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 24px 28px 32px;
+  text-align: center;
+}
+.crystal-inline-content .ai-stack-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin-left: auto;
+  margin-right: auto;
+}
+.crystal-inline-content .ai-stack-body {
+  font-size: 1.05rem;
+  max-width: 40ch;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+.crystal-inline-content .ai-stack-meta {
+  justify-content: center;
+}
+.crystal-inline-content .ai-stack-chips {
+  justify-content: center;
+}
+.crystal-inline-content .ai-stack-connects-label {
+  text-align: center;
+}
+.crystal-inline-content .hub-project-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.crystal-inline-content .menu-hub-lead {
+  text-align: center;
+  margin-bottom: 20px;
+  color: rgba(244,244,242,0.55);
 }
