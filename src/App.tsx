@@ -63,6 +63,7 @@ function App() {
   const [activeCrystal, setActiveCrystal] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [panelReady, setPanelReady] = useState(false)
+  const [particleVisible, setParticleVisible] = useState(true)
   const modalOpenRef = useRef(false)
 
   const targetProgressRef = useRef(0)
@@ -75,6 +76,8 @@ function App() {
   const lastTouchY = useRef(0)
   const lastDirectionRef = useRef(0)
   const snapTimerRef = useRef<number | null>(null)
+  const crystalExitTimerRef = useRef<number | null>(null)
+  const crystalExitAnimatingRef = useRef(false)
   const wakeAnimationRef = useRef<(() => void) | null>(null)
   const applyProgressRef = useRef<(n: number) => void>(() => {})
   const globeActiveRef = useRef(false)
@@ -178,6 +181,51 @@ function App() {
     applyProgressRef.current = applyProgress
   }, [applyProgress])
 
+  const exitCrystalToHome = useCallback(() => {
+    if (crystalExitAnimatingRef.current) return
+    crystalExitAnimatingRef.current = true
+
+    if (snapTimerRef.current !== null) {
+      window.clearTimeout(snapTimerRef.current)
+      snapTimerRef.current = null
+    }
+    if (panelAnimRef.current !== null) {
+      cancelAnimationFrame(panelAnimRef.current)
+      panelAnimRef.current = null
+    }
+    if (dissolveAnimRef.current !== null) {
+      cancelAnimationFrame(dissolveAnimRef.current)
+      dissolveAnimRef.current = null
+    }
+
+    panelRef.current = 0
+    dissolveRef.current = 0
+    modalOpenRef.current = false
+    setPanelReady(false)
+    setModalOpen(false)
+
+    // Keep the crystal on screen for the fade-out. The WebGL buffer itself
+    // is not rebuilt; only its visibility is changed.
+    setParticleVisible(false)
+
+    if (crystalExitTimerRef.current !== null) {
+      window.clearTimeout(crystalExitTimerRef.current)
+    }
+    crystalExitTimerRef.current = window.setTimeout(() => {
+      // While hidden, switch the existing particle buffer to the b1o state.
+      // Nothing is recreated and no crystal geometry is sampled again.
+      targetProgressRef.current = 0
+      renderedProgressRef.current = 0
+      applyProgressRef.current(0)
+      crystalExitTimerRef.current = null
+      setParticleVisible(true)
+
+      // Let the normal timeline continue from b1o.
+      crystalExitAnimatingRef.current = false
+      wakeAnimationRef.current?.()
+    }, 280)
+  }, [])
+
   useEffect(() => {
     let raf = 0
     let running = true
@@ -203,39 +251,19 @@ function App() {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      if (modalOpenRef.current) return
 
       const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0
       if (dir === 0) return
 
-      const delta = e.deltaY * DESKTOP_SENSITIVITY
       if (dir < 0 && targetProgressRef.current >= CRYSTAL_START) {
-        if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
-        if (panelAnimRef.current !== null) cancelAnimationFrame(panelAnimRef.current)
-        if (dissolveAnimRef.current !== null) cancelAnimationFrame(dissolveAnimRef.current)
-        snapTimerRef.current = null
-        panelAnimRef.current = null
-        dissolveAnimRef.current = null
-        panelRef.current = 0
-        dissolveRef.current = 0
-        modalOpenRef.current = false
-        setPanelReady(false)
-        setModalOpen(false)
-
-        // The WebGL morph is visually parked at exactly 3 while all
-        // navigation crystals use 3..MAX_PROGRESS. Reset the rendered
-        // position to that visible boundary before continuing backwards.
-        renderedProgressRef.current = CRYSTAL_START
-        targetProgressRef.current = clamp(CRYSTAL_START + delta, 0, CRYSTAL_START)
-        lastDirectionRef.current = dir
-        applyProgressRef.current(renderedProgressRef.current)
-        wake()
-        scheduleDirectionalSnap(dir)
+        exitCrystalToHome()
         return
       }
 
+      if (modalOpenRef.current) return
+
       targetProgressRef.current = clamp(
-        targetProgressRef.current + delta,
+        targetProgressRef.current + e.deltaY * DESKTOP_SENSITIVITY,
         0,
         MAX_PROGRESS,
       )
@@ -246,39 +274,21 @@ function App() {
       lastTouchY.current = e.touches[0]?.clientY ?? 0
     }
     const onTouchMove = (e: TouchEvent) => {
-      if (modalOpenRef.current) return
-
       const y = e.touches[0]?.clientY ?? lastTouchY.current
       const dy = lastTouchY.current - y
       lastTouchY.current = y
       const dir = dy > 0 ? 1 : dy < 0 ? -1 : 0
       if (dir === 0) return
 
-      const delta = dy * TOUCH_SENSITIVITY
       if (dir < 0 && targetProgressRef.current >= CRYSTAL_START) {
-        if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
-        if (panelAnimRef.current !== null) cancelAnimationFrame(panelAnimRef.current)
-        if (dissolveAnimRef.current !== null) cancelAnimationFrame(dissolveAnimRef.current)
-        snapTimerRef.current = null
-        panelAnimRef.current = null
-        dissolveAnimRef.current = null
-        panelRef.current = 0
-        dissolveRef.current = 0
-        modalOpenRef.current = false
-        setPanelReady(false)
-        setModalOpen(false)
-
-        renderedProgressRef.current = CRYSTAL_START
-        targetProgressRef.current = clamp(CRYSTAL_START + delta, 0, CRYSTAL_START)
-        lastDirectionRef.current = dir
-        applyProgressRef.current(renderedProgressRef.current)
-        wake()
-        scheduleDirectionalSnap(dir)
+        exitCrystalToHome()
         return
       }
 
+      if (modalOpenRef.current) return
+
       targetProgressRef.current = clamp(
-        targetProgressRef.current + delta,
+        targetProgressRef.current + dy * TOUCH_SENSITIVITY,
         0,
         MAX_PROGRESS,
       )
@@ -297,6 +307,7 @@ function App() {
       if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
       if (dissolveAnimRef.current) cancelAnimationFrame(dissolveAnimRef.current)
       if (panelAnimRef.current) cancelAnimationFrame(panelAnimRef.current)
+      if (crystalExitTimerRef.current !== null) window.clearTimeout(crystalExitTimerRef.current)
       window.removeEventListener('wheel', onWheel)
       window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouchMove)
@@ -373,7 +384,7 @@ function App() {
           dissolveRef={dissolveRef}
           panelRef={panelRef}
           particleDensity={1}
-          className="particle-canvas"
+          className={particleVisible ? 'particle-canvas' : 'particle-canvas particle-canvas--fade-out'}
         />
         {crystalActive && !modalOpen && (
           <button
