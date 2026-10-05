@@ -6,6 +6,7 @@ type Point = { x: number; y: number; strength: number }
 type ParticleMorphProps = {
   images: string[]
   progressRef: { current: number }
+  dissolveRef?: { current: number }
   particleDensity?: number
   className?: string
 }
@@ -116,6 +117,7 @@ const vertexShader = [
   'attribute vec4 aCrystal;',
   'uniform float uProgress;',
   'uniform float uTime;',
+  'uniform float uDissolve;',
   'uniform vec2 uScale;',
   'uniform float uPixelRatio;',
   'varying float vAlpha;',
@@ -135,35 +137,52 @@ const vertexShader = [
   '    local = p - 1.0; from = aBall.xy * 0.80; to = aKeyboard.xy;',
   '    fromStrength = aBall.z; toStrength = aKeyboard.z;',
   '  } else {',
-  '    local = p - 2.0; from = aKeyboard.xy; to = aCrystal.xy * 1.15;',
+  '    local = p - 2.0; from = aKeyboard.xy; to = aCrystal.xy * 0.72;',
   '    fromStrength = aKeyboard.z; toStrength = aCrystal.z;',
   '  }',
   '  float t = quintic(local);',
+  '  t = mix(t, smoothstep(0.0, 1.0, local), 0.35);',
   '  vec2 pos = mix(from, to, t);',
   '  float travel = sin(3.14159265 * local);',
-  '  float angle = aKeyboard.w * 6.2831853 + uTime * (0.30 + aKeyboard.w * 0.70);',
-  '  float burst = travel * (0.003 + aKeyboard.w * 0.009);',
+  '  float angle = aKeyboard.w * 6.2831853 + uTime * (0.22 + aKeyboard.w * 0.55);',
+  '  float burst = travel * (0.002 + aKeyboard.w * 0.006);',
   '  pos += vec2(cos(angle), sin(angle)) * burst;',
-  '  pos += vec2(sin(uTime * 2.0 + aKeyboard.w * 18.0), cos(uTime * 1.7 + aKeyboard.w * 15.0)) * 0.00045;',
-  '  float crystalAmt = smoothstep(2.05, 2.55, p);',
+  '  pos += vec2(sin(uTime * 1.6 + aKeyboard.w * 14.0), cos(uTime * 1.3 + aKeyboard.w * 12.0)) * 0.00032;',
+  '  float crystalAmt = smoothstep(2.0, 2.75, p);',
+  '  float edge = aCrystal.z;',
+  '  float spark = 0.0;',
   '  if (crystalAmt > 0.001) {',
-  '    float spin = uTime * 0.7 + (p - 2.0) * 1.4;',
+  '    float spin = uTime * 0.55 + (p - 2.0) * 0.9 + uDissolve * 6.5;',
   '    float ca = cos(spin); float sa = sin(spin);',
-  '    float px = pos.x; float py = pos.y; float pz = aCrystal.w;',
+  '    float px = pos.x; float py = pos.y; float pz = aCrystal.w * 0.72;',
   '    float rx = px * ca - pz * sa;',
   '    float rz = px * sa + pz * ca;',
-  '    float tilt = 0.38; float cT = cos(tilt); float sT = sin(tilt);',
+  '    float tilt = 0.32; float cT = cos(tilt); float sT = sin(tilt);',
   '    float ry = py * cT - rz * sT;',
   '    float rz2 = py * sT + rz * cT;',
-  '    float persp = 1.35 / (1.35 + rz2);',
+  '    float persp = 1.45 / (1.45 + rz2);',
   '    pos.x = mix(pos.x, rx * persp, crystalAmt);',
   '    pos.y = mix(pos.y, ry * persp, crystalAmt);',
-  '    toStrength = mix(toStrength, toStrength * (0.75 + persp * 0.5), crystalAmt);',
+  '    toStrength = mix(toStrength, toStrength * (0.7 + persp * 0.55), crystalAmt);',
+  '    spark = edge * edge * (0.55 + 0.45 * sin(uTime * 3.2 + edge * 20.0 + rz2 * 8.0));',
+  '    spark *= crystalAmt * (1.0 - uDissolve * 0.7);',
+  '    if (uDissolve > 0.001) {',
+  '      float d = uDissolve;',
+  '      float rnd = aKeyboard.w;',
+  '      vec2 dir = normalize(pos + vec2(0.0001));',
+  '      float outward = d * (0.12 + rnd * 0.28);',
+  '      pos += dir * outward;',
+  '      pos += vec2(cos(rnd * 40.0 + uTime * 4.0), sin(rnd * 35.0 + uTime * 3.5)) * d * 0.08;',
+  '    }',
   '  }',
   '  gl_Position = vec4(pos * uScale, 0.0, 1.0);',
   '  float strength = mix(fromStrength, toStrength, t);',
-  '  vAlpha = 0.62 + min(0.38, strength * 0.45);',
-  '  gl_PointSize = uPixelRatio * (1.55 + strength * 0.55);',
+  '  float alpha = 0.62 + min(0.38, strength * 0.45);',
+  '  alpha *= (1.0 - uDissolve * 0.55);',
+  '  alpha = min(1.0, alpha + spark * 0.5);',
+  '  vAlpha = alpha;',
+  '  float sizeBoost = 1.0 + spark * 0.9;',
+  '  gl_PointSize = uPixelRatio * (1.45 + strength * 0.5) * sizeBoost;',
   '}',
 ].join('\n')
 
@@ -182,10 +201,13 @@ const fragmentShader = [
 export default function ParticleMorph({
   images,
   progressRef,
+  dissolveRef,
   particleDensity = 1,
   className = '',
 }: ParticleMorphProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const dissolveInternal = useRef(0)
+  const dissolve = dissolveRef ?? dissolveInternal
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -230,7 +252,6 @@ export default function ParticleMorph({
       const ball = new Float32Array(particleCount * 4)
       const keyboard = new Float32Array(particleCount * 4)
       const crystal = new Float32Array(particleCount * 4)
-
       const mesh = getCrystalPoints(particleCount)
 
       for (let i = 0; i < particleCount; i += 1) {
@@ -264,6 +285,7 @@ export default function ParticleMorph({
 
       const uniformProgress = gl.getUniformLocation(program, 'uProgress')
       const uniformTime = gl.getUniformLocation(program, 'uTime')
+      const uniformDissolve = gl.getUniformLocation(program, 'uDissolve')
       const uniformScale = gl.getUniformLocation(program, 'uScale')
       const uniformPixelRatio = gl.getUniformLocation(program, 'uPixelRatio')
 
@@ -297,6 +319,7 @@ export default function ParticleMorph({
 
       let running = false
       let lastProgress = -1
+      let lastDissolve = -1
       let idleFrames = 0
       const IDLE_THRESHOLD = 45
 
@@ -317,19 +340,24 @@ export default function ParticleMorph({
         frame = 0
         if (disposed || !running || document.hidden) return
         const progress = progressRef.current
+        const d = dissolve.current
         const progressDelta = Math.abs(progress - lastProgress)
-        if (progress >= 2.0) {
+        const dissolveDelta = Math.abs(d - lastDissolve)
+        if (progress >= 2.0 || d > 0.001) {
           idleFrames = 0
           lastProgress = progress
-        } else if (progressDelta < 0.00005) {
+          lastDissolve = d
+        } else if (progressDelta < 0.00005 && dissolveDelta < 0.00005) {
           idleFrames += 1
         } else {
           idleFrames = 0
           lastProgress = progress
+          lastDissolve = d
         }
         gl.clear(gl.COLOR_BUFFER_BIT)
         gl.uniform1f(uniformProgress, progress)
         gl.uniform1f(uniformTime, time * 0.001)
+        gl.uniform1f(uniformDissolve, d)
         gl.drawArrays(gl.POINTS, 0, particleCount)
         requestRender()
       }
@@ -369,7 +397,7 @@ export default function ParticleMorph({
       disposed = true
       stopRenderer()
     }
-  }, [images, particleDensity, progressRef])
+  }, [images, particleDensity, progressRef, dissolve])
 
   return <canvas ref={canvasRef} className={className} aria-hidden="true" />
 }
