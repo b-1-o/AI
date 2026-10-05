@@ -143,7 +143,7 @@ export function getCrystalPoints(count = 5200): CrystalPt[] {
     sampleEdge(verts[i], verts[j], 1.35, edgePts)
   }
 
-  const edgeBudget = Math.min(edgePts.length, Math.floor(count * 0.24))
+  const edgeBudget = Math.min(edgePts.length, Math.floor(count * 0.255))
   const faceBudget = count - edgeBudget
 
   const pick = (src: CrystalPt[], n: number) => {
