@@ -66,6 +66,13 @@ body, canvas { overscroll-behavior: none; }
   pointer-events: none;
   contain: strict;
   content-visibility: auto;
+  opacity: 1;
+  transition: opacity 280ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: opacity;
+}
+
+.particle-canvas--fade-out {
+  opacity: 0;
 }
 
 .intro-copy {
