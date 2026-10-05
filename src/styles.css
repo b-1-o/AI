@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap');
 
 :root {
   font-family: 'Manrope', system-ui, sans-serif;
   color: #f4f4f2;
   background: #050505;
   font-synthesis: none;
-  text-rendering: geometricPrecision;
+  text-rendering: optimizeSpeed;
   --muted: rgba(244, 244, 242, 0.56);
   --line: rgba(244, 244, 242, 0.12);
   --mono: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -18,6 +18,12 @@ a { color: inherit; text-decoration: none; }
 body, canvas { overscroll-behavior: none; }
 
 .site { background: #050505; }
+
+/* Skip layout/paint work for off-screen sections */
+.content > section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 700px;
+}
 
 .intro-stage {
   position: relative;
@@ -33,9 +39,12 @@ body, canvas { overscroll-behavior: none; }
   inset: -4%;
   z-index: 0;
   background: #050505;
+  background-size: cover;
+  background-position: center;
   filter: grayscale(0.25) contrast(1.08) saturate(0.7);
   transform-origin: center;
   will-change: opacity, transform;
+  contain: strict;
 }
 
 .intro-vignette {
@@ -55,8 +64,8 @@ body, canvas { overscroll-behavior: none; }
   width: 100%;
   height: 100%;
   pointer-events: none;
-  contain: layout paint style;
-  will-change: contents;
+  contain: strict;
+  content-visibility: auto;
 }
 
 .intro-copy {
@@ -329,5 +338,4 @@ body, canvas { overscroll-behavior: none; }
   .tool-row { grid-template-columns: 92px 1fr; gap: 16px; }
   .contact-row { flex-wrap: wrap; gap: 18px; }
 }
-
 
