@@ -1,29 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import DecryptedText from './components/DecryptedText'
-import AIStack from './components/AIStack'
+import MenuHub from './components/MenuHub'
 import b1oImage from '../assets/b1o.jpg'
 import ballImage from '../assets/ball.jpg'
 import keyboardImage from '../assets/keyboard.jpg'
 import palatImage from '../assets/palat.jpeg'
-
-const projects = [
-  { name: 'HEAVEN', type: 'Developer command center', stack: 'Next.js · TypeScript · PostgreSQL · Vercel', href: 'https://heaven-b1o.vercel.app/' },
-  { name: 'myUI', type: 'Experimental frontend / UI system', stack: 'React · TypeScript · Motion · GitHub Pages', href: 'https://b-1-o.github.io/myUI/' },
-  { name: 'Music', type: 'Modern music web application', stack: 'React · API · Player · Responsive UI', href: 'https://b-1-o.github.io/music/' },
-  { name: 'Nothing', type: 'Product design experiment', stack: 'React · Visual systems · Interaction', href: 'https://github.com/b-1-o/nothing' },
-  { name: 'Coffee', type: 'Homemade coffee & dessert experience', stack: 'React · Motion · Product UI', href: 'https://b-1-o.github.io/coffee/' },
-  { name: 'b1api', type: 'Developer API experiment', stack: 'TypeScript · APIs · Tooling', href: 'https://github.com/b-1-o/b1api' },
-]
-
-const tools = [
-  ['BUILD', 'React / Next.js / TypeScript / JavaScript'],
-  ['DESIGN', 'Figma / UI systems / visual direction'],
-  ['MOTION', 'React Bits / MotionSites / scroll choreography'],
-  ['BACKEND', 'PostgreSQL / APIs / integrations'],
-  ['SHIP', 'Git / GitHub / Vercel'],
-  ['AI', 'Research / prompting / debugging / iteration'],
-]
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
 const particleImages = [b1oImage, ballImage, keyboardImage]
@@ -172,12 +154,9 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (isComplete) return
+
     const onWheel = (event: WheelEvent) => {
-      const atTop = window.scrollY <= 2
-      const introLocked = !isComplete || (atTop && event.deltaY < 0)
-
-      if (!introLocked) return
-
       event.preventDefault()
 
       const normalized =
@@ -198,12 +177,6 @@ function App() {
       const currentY = event.touches[0]?.clientY ?? lastTouchY.current
       const delta = lastTouchY.current - currentY
       lastTouchY.current = currentY
-
-      const atTop = window.scrollY <= 2
-      const introLocked = !isComplete || (atTop && delta < 0)
-
-      if (!introLocked) return
-
       event.preventDefault()
       setTargetProgress(delta, TOUCH_SENSITIVITY)
     }
@@ -245,148 +218,81 @@ function App() {
 
   return (
     <div className="site">
-      <section className="intro-stage" aria-label="b1o particle intro">
-        <div
-          ref={introImageRef}
-          className="intro-image"
-          style={{
-            backgroundImage: `linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.78) 70%, #050505 100%), url('${palatImage}')`,
-          }}
-        />
-        <div className="intro-vignette" />
-
-        <ParticleMorph
-          images={particleImages}
-          progressRef={renderedProgressRef}
-          particleDensity={1}
-          className="particle-canvas"
-        />
-
-        <div className="intro-copy">
+      {!isComplete && (
+        <section className="intro-stage" aria-label="b1o particle intro">
           <div
-            ref={globeCaptionRef}
-            className="morph-caption morph-caption-globe"
-            style={{ opacity: 0 }}
-          >
-            <DecryptedText
-              text="AI is not enemy, it's tool"
-              animateOn="active"
-              active={globeActive}
-              sequential
-              speed={28}
-              revealDirection="start"
-              parentClassName="decrypted-caption"
-              encryptedClassName="decrypted-encrypted"
-            />
-          </div>
+            ref={introImageRef}
+            className="intro-image"
+            style={{
+              backgroundImage: `linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.78) 70%, #050505 100%), url('${palatImage}')`,
+            }}
+          />
+          <div className="intro-vignette" />
 
-          <div
-            ref={keyboardCaptionRef}
-            className="morph-caption morph-caption-keyboard"
-            style={{ opacity: 0 }}
-          >
-            <DecryptedText
-              text="I use AI as tool, and here's how I do it..."
-              animateOn="active"
-              active={keyboardActive}
-              sequential
-              speed={26}
-              revealDirection="start"
-              parentClassName="decrypted-caption"
-              encryptedClassName="decrypted-encrypted"
-            />
-          </div>
-        </div>
+          <ParticleMorph
+            images={particleImages}
+            progressRef={renderedProgressRef}
+            particleDensity={1}
+            className="particle-canvas"
+          />
 
-        <div className="intro-ui">
-          <span className="intro-index">01 / 03</span>
-          <span className="intro-hint">{isComplete ? 'SCROLL TO ENTER' : 'SCROLL TO MORPH'}</span>
-        </div>
-      </section>
+          <div className="intro-copy">
+            <div
+              ref={globeCaptionRef}
+              className="morph-caption morph-caption-globe"
+              style={{ opacity: 0 }}
+            >
+              <DecryptedText
+                text="AI is not enemy, it's tool"
+                animateOn="active"
+                active={globeActive}
+                sequential
+                speed={28}
+                revealDirection="start"
+                parentClassName="decrypted-caption"
+                encryptedClassName="decrypted-encrypted"
+              />
+            </div>
 
-      <main className="content">
-        <section className="statement section-pad">
-          <div className="eyebrow">01 — PRINCIPLE</div>
-          <h1>
-            AI is not the product.
-            <br />
-            <span>It&apos;s part of the process.</span>
-          </h1>
-          <p>
-            I use AI as a tool for research, prototyping, implementation, debugging and iteration.
-            The decisions, taste and direction still come from me.
-          </p>
-        </section>
-
-        <section className="workflow section-pad">
-          <div className="ascii-wrap">
-            <div className="ascii-content">
-              <div className="eyebrow">02 — WORKFLOW</div>
-              <h2>How I use AI.</h2>
-              <div className="workflow-line">
-                {['IDEA', 'RESEARCH', 'AI', 'PROTOTYPE', 'CODE', 'DEBUG', 'REFINE', 'DEPLOY'].map((item, index) => (
-                  <div className="workflow-node" key={item}>
-                    <span>0{index + 1}</span>
-                    <strong>{item}</strong>
-                  </div>
-                ))}
-              </div>
+            <div
+              ref={keyboardCaptionRef}
+              className="morph-caption morph-caption-keyboard"
+              style={{ opacity: 0 }}
+            >
+              <DecryptedText
+                text="I use AI as tool, and here's how I do it..."
+                animateOn="active"
+                active={keyboardActive}
+                sequential
+                speed={26}
+                revealDirection="start"
+                parentClassName="decrypted-caption"
+                encryptedClassName="decrypted-encrypted"
+              />
             </div>
           </div>
-        </section>
 
-        <section className="ai-stack-section section-pad">
-          <div className="eyebrow">03 — AI STACK</div>
-          <div className="ai-stack-head">
-            <h2>How each model earns its place.</h2>
-            <p>Folders for every AI I actually use — what it does, what connects to it, and where it sits in the process.</p>
+          <div className="intro-ui">
+            <span className="intro-index">01 / 03</span>
+            <span className="intro-hint">SCROLL TO MORPH</span>
           </div>
-          <AIStack />
         </section>
+      )}
 
-        <section className="tools section-pad">
-          <div className="eyebrow">04 — TOOLKIT</div>
-          <div className="tools-grid">
-            {tools.map(([label, value]) => (
-              <div className="tool-row" key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="projects section-pad">
-          <div className="eyebrow">05 — WORK</div>
-          <div className="projects-head">
-            <h2>Built, tested, shipped.</h2>
-            <p>Real experiments and products built around interfaces, motion and systems.</p>
-          </div>
-          <div className="project-list">
-            {projects.map((project, index) => (
-              <a className="project" href={project.href} target="_blank" rel="noreferrer" key={project.name}>
-                <div className="project-number">0{index + 1}</div>
-                <div className="project-main">
-                  <h3>{project.name}</h3>
-                  <p>{project.type}</p>
-                </div>
-                <div className="project-stack">{project.stack}</div>
-                <span className="project-arrow">↗</span>
-              </a>
-            ))}
-          </div>
-        </section>
-
-        <section className="contact section-pad">
-          <div className="eyebrow">06 — CONTACT</div>
-          <h2>Let&apos;s build something worth remembering.</h2>
-          <div className="contact-row">
-            <a href="https://github.com/b-1-o" target="_blank" rel="noreferrer">GitHub ↗</a>
-            <a href="https://www.linkedin.com/in/b1o" target="_blank" rel="noreferrer">LinkedIn ↗</a>
-            <a href="https://www.fiverr.com/users/webbio" target="_blank" rel="noreferrer">Fiverr ↗</a>
-          </div>
-        </section>
-      </main>
+      {isComplete ? (
+        <MenuHub
+          onBackToIntro={() => {
+            setIsComplete(false)
+            targetProgressRef.current = 0
+            renderedProgressRef.current = 0
+            setGlobeActive(false)
+            setKeyboardActive(false)
+            globeActiveRef.current = false
+            keyboardActiveRef.current = false
+            wakeAnimationRef.current?.()
+          }}
+        />
+      ) : null}
     </div>
   )
 }
