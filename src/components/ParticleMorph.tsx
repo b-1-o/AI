@@ -5,6 +5,7 @@ type Point = { x: number; y: number; strength: number }
 
 type ParticleMorphProps = {
   images: string[]
+  squareSrc?: string
   progressRef: { current: number }
   dissolveRef?: { current: number }
   panelRef?: { current: number }
@@ -116,6 +117,7 @@ const vertexShader = [
   'attribute vec4 aBall;',
   'attribute vec4 aKeyboard;',
   'attribute vec4 aCrystal;',
+  'attribute vec4 aSquare;',
   'uniform float uProgress;',
   'uniform float uTime;',
   'uniform float uDissolve;',
@@ -167,39 +169,24 @@ const vertexShader = [
   '    pos.y = mix(pos.y, ry * persp, crystalAmt);',
   '    toStrength = mix(toStrength, toStrength * (0.7 + persp * 0.55), crystalAmt);',
   '    spark = edge * edge * (0.55 + 0.45 * sin(uTime * 3.2 + edge * 20.0 + rz2 * 8.0));',
-  '    spark *= crystalAmt * (1.0 - uDissolve * 0.7);',
+  '    spark *= crystalAmt * (1.0 - uDissolve * 0.7) * (1.0 - uPanel);',
   '    if (uDissolve > 0.001) {',
   '      float d = uDissolve;',
   '      float rnd = aKeyboard.w;',
   '      vec2 dir = normalize(pos + vec2(0.0001));',
-  '      float outward = d * (0.14 + rnd * 0.32);',
-  '      pos += dir * outward;',
+  '      pos += dir * d * (0.14 + rnd * 0.32);',
   '      pos += vec2(cos(rnd * 40.0 + uTime * 4.0), sin(rnd * 35.0 + uTime * 3.5)) * d * 0.09;',
   '      pos.y -= d * (0.12 + rnd * 0.1);',
   '    }',
   '    if (uPanel > 0.001) {',
   '      float pn = uPanel;',
   '      float rnd = aKeyboard.w;',
-  '      float edgeN = aCrystal.z;',
-  '      float hw = 0.38;',
-  '      float hh = 0.48;',
-  '      float slot = fract(rnd * 7.13);',
-  '      vec2 panelPos;',
-  '      if (edgeN > 0.55 || slot < 0.55) {',
-  '        float peri = fract(rnd * 3.7 + aCrystal.x * 2.0);',
-  '        float plen = 2.0 * (hw + hh);',
-  '        float d = peri * plen;',
-  '        if (d < 2.0 * hw) { panelPos = vec2(-hw + d, hh); }',
-  '        else if (d < 2.0 * hw + 2.0 * hh) { panelPos = vec2(hw, hh - (d - 2.0 * hw)); }',
-  '        else if (d < 4.0 * hw + 2.0 * hh) { panelPos = vec2(hw - (d - 2.0 * hw - 2.0 * hh), -hh); }',
-  '        else { panelPos = vec2(-hw, -hh + (d - 4.0 * hw - 2.0 * hh)); }',
-  '      } else {',
-  '        panelPos = vec2((rnd - 0.5) * 2.0 * hw * 0.92, (fract(rnd * 11.0) - 0.5) * 2.0 * hh * 0.92);',
-  '      }',
+  '      vec2 sq = aSquare.xy * 0.95;',
   '      float scatter = sin(pn * 3.14159265);',
-  '      vec2 mid = mix(pos, panelPos, pn);',
-  '      mid += vec2(cos(rnd * 20.0), sin(rnd * 17.0)) * scatter * 0.06;',
+  '      vec2 mid = mix(pos, sq, pn);',
+  '      mid += vec2(cos(rnd * 20.0 + uTime), sin(rnd * 17.0 + uTime)) * scatter * 0.05;',
   '      pos = mix(pos, mid, pn);',
+  '      toStrength = mix(toStrength, aSquare.z, pn);',
   '    }',
   '  }',
   '  gl_Position = vec4(pos * uScale, 0.0, 1.0);',
@@ -227,6 +214,7 @@ const fragmentShader = [
 
 export default function ParticleMorph({
   images,
+  squareSrc,
   progressRef,
   dissolveRef,
   panelRef,
@@ -274,14 +262,24 @@ export default function ParticleMorph({
     }
 
     const start = async () => {
-      const loaded = await Promise.all(images.slice(0, 3).map((src) => sampleImage(src)))
+      const baseImgs = images.slice(0, 3)
+      const squareUrl = squareSrc || images[3]
+      const loaded = await Promise.all([
+        ...baseImgs.map((src) => sampleImage(src)),
+        squareUrl ? sampleImage(squareUrl, 640) : Promise.resolve([] as Point[]),
+      ])
       if (disposed) return () => {}
 
-      const prepared = loaded.map((points) => selectEvenly(points, particleCount))
+      const prepared = loaded.slice(0, 3).map((points) => selectEvenly(points, particleCount))
+      const squarePts = selectEvenly(
+        loaded[3] && loaded[3].length > 0 ? loaded[3] : prepared[2],
+        particleCount,
+      )
       const b1o = new Float32Array(particleCount * 4)
       const ball = new Float32Array(particleCount * 4)
       const keyboard = new Float32Array(particleCount * 4)
       const crystal = new Float32Array(particleCount * 4)
+      const square = new Float32Array(particleCount * 4)
       const mesh = getCrystalPoints(particleCount)
 
       for (let i = 0; i < particleCount; i += 1) {
@@ -290,6 +288,7 @@ export default function ParticleMorph({
         const ba = prepared[1][i]
         const kb = prepared[2][i]
         const cr = mesh[i]
+        const sq = squarePts[i]
 
         b1o[offset] = b1.x
         b1o[offset + 1] = b1.y
@@ -305,6 +304,11 @@ export default function ParticleMorph({
         crystal[offset + 1] = cr.y
         crystal[offset + 2] = cr.s
         crystal[offset + 3] = cr.z
+
+        square[offset] = sq.x
+        square[offset + 1] = sq.y
+        square[offset + 2] = sq.strength
+        square[offset + 3] = 0
 
         const value = Math.sin((i + 1) * 12.9898) * 43758.5453
         keyboard[offset + 3] = value - Math.floor(value)
@@ -325,6 +329,7 @@ export default function ParticleMorph({
         setAttribute(program, 'aBall', ball, 4),
         setAttribute(program, 'aKeyboard', keyboard, 4),
         setAttribute(program, 'aCrystal', crystal, 4),
+        setAttribute(program, 'aSquare', square, 4),
       ]
 
       gl.enable(gl.BLEND)
@@ -430,7 +435,7 @@ export default function ParticleMorph({
       disposed = true
       stopRenderer()
     }
-  }, [images, particleDensity, progressRef, dissolve, panel])
+  }, [images, squareSrc, particleDensity, progressRef, dissolve, panel])
 
   return <canvas ref={canvasRef} className={className} aria-hidden="true" />
 }
