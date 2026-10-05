@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import BranchedMenu, { type BranchedMenuItem } from './BranchedMenu'
+import { ServiceLogo, ModelLogo } from './Logos'
 
 const Icon = ({ d }: { d: string }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -181,11 +182,19 @@ export default function AIStack({ focusModel, defaultLeaf }: AIStackProps) {
             {detail.connects.length > 0 ? 'Connected' : 'Focus'}
           </span>
           <div className="ai-stack-chips">
-            {(detail.connects.length > 0 ? detail.connects : ['Visual generation']).map((c) => (
-              <span key={c} className="ai-stack-chip">
-                {c}
-              </span>
-            ))}
+            {detail.connects.length > 0
+              ? detail.connects.map((c) => (
+                  <span key={c} className="ai-stack-chip ai-stack-chip--logo">
+                    <ServiceLogo name={c} size={14} />
+                    {c}
+                  </span>
+                ))
+              : (
+                  <span className="ai-stack-chip ai-stack-chip--logo">
+                    <ModelLogo name="Gemini" size={14} />
+                    Visual generation
+                  </span>
+                )}
           </div>
         </div>
       </div>
