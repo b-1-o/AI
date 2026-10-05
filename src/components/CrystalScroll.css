@@ -14,7 +14,6 @@
 .crystal-scroll {
   position: relative;
   z-index: 2;
-  scroll-snap-type: y mandatory;
 }
 
 .crystal-section {
@@ -26,8 +25,6 @@
   justify-content: center;
   padding: 88px 24px 56px;
   box-sizing: border-box;
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
   opacity: 0;
   transform: scale(0.88) translateY(28px);
   filter: blur(6px);
@@ -127,7 +124,6 @@
   padding: 8px 14px;
   border-radius: 999px;
   background: rgba(5, 5, 5, 0.4);
-  transition: color 200ms ease, border-color 200ms ease;
 }
 
 .crystal-stage:hover .crystal-stage-cta {
@@ -153,7 +149,6 @@
   display: flex;
   align-items: stretch;
   justify-content: center;
-  padding: 0;
 }
 
 .crystal-modal-backdrop {
@@ -222,7 +217,6 @@
   padding: 10px 14px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 200ms ease, color 200ms ease;
 }
 
 .crystal-modal-close:hover {
@@ -232,6 +226,29 @@
 
 .crystal-modal-body {
   padding: 28px 24px 48px;
+}
+
+.crystal-hit {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  width: min(360px, 70vw);
+  height: min(480px, 62vh);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 6;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 40% 40% 30% 30%;
+}
+
+.morph-caption-crystal {
+  bottom: 18%;
+}
+
+.menu-hub-embed {
+  padding: 0;
 }
 
 .dot-crystal {
@@ -245,21 +262,5 @@
   }
   .crystal-stage {
     height: min(520px, 72vh);
-  }
-  .crystal-section-index {
-    right: 16px;
-    bottom: 16px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .crystal-section {
-    opacity: 1;
-    transform: none;
-    filter: none;
-    transition: none;
-  }
-  .crystal-modal-panel {
-    animation: none;
   }
 }
