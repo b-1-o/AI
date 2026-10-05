@@ -118,7 +118,7 @@ function sampleEdge(a: Vec3, b: Vec3, density: number, out: CrystalPt[]) {
       x: p[0] + j * 0.3,
       y: p[1] + j * 0.2,
       z: p[2] + j * 0.3,
-      s: 0.92 + Math.random() * 0.08,
+      s: 0.84 + Math.random() * 0.04,
     })
   }
 }
@@ -143,7 +143,7 @@ export function getCrystalPoints(count = 5200): CrystalPt[] {
     sampleEdge(verts[i], verts[j], 1.35, edgePts)
   }
 
-  const edgeBudget = Math.min(edgePts.length, Math.floor(count * 0.22))
+  const edgeBudget = Math.min(edgePts.length, Math.floor(count * 0.24))
   const faceBudget = count - edgeBudget
 
   const pick = (src: CrystalPt[], n: number) => {
