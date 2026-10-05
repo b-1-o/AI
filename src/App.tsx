@@ -75,6 +75,7 @@ function App() {
   const lastDirectionRef = useRef(0)
   const snapTimerRef = useRef<number | null>(null)
   const wakeAnimationRef = useRef<(() => void) | null>(null)
+  const applyProgressRef = useRef<(n: number) => void>(() => {})
   const globeActiveRef = useRef(false)
   const keyboardActiveRef = useRef(false)
   const crystalActiveRef = useRef(false)
@@ -94,14 +95,29 @@ function App() {
       const stops: number[] = [0, BALL_STOP, KEYBOARD_STOP]
       for (let i = 0; i < CRYSTALS.length; i++) stops.push(CRYSTAL_START + i)
       let target = current
+      let wrap = false
       if (dir > 0) {
         const next = stops.find((s) => s > current + 0.08)
-        target = next !== undefined ? next : MAX_PROGRESS
+        if (next !== undefined) target = next
+        else {
+          target = 0
+          wrap = true
+        }
       } else if (dir < 0) {
         const prev = [...stops].reverse().find((s) => s < current - 0.08)
-        target = prev !== undefined ? prev : 0
+        if (prev !== undefined) target = prev
+        else {
+          target = MAX_PROGRESS
+          wrap = true
+        }
       }
-      targetProgressRef.current = clamp(target, 0, MAX_PROGRESS)
+      if (wrap) {
+        targetProgressRef.current = target
+        renderedProgressRef.current = target
+        applyProgressRef.current(target)
+      } else {
+        targetProgressRef.current = clamp(target, 0, MAX_PROGRESS)
+      }
       wakeAnimationRef.current?.()
     }, SNAP_DELAY)
   }, [])
@@ -173,6 +189,10 @@ function App() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    applyProgressRef.current = applyProgress
+  }, [applyProgress])
 
   useEffect(() => {
     let raf = 0
@@ -369,16 +389,9 @@ function App() {
       </section>
 
       {modalOpen && (
-        <div className="crystal-modal crystal-modal--particle" role="dialog" aria-modal="true" aria-label={crystal.id}>
-          <button type="button" className="crystal-modal-backdrop crystal-modal-backdrop--soft" aria-label="Close" onClick={closePanel} />
-          <div className="crystal-modal-panel crystal-modal-panel--ghost">
-            <div className="crystal-modal-bar">
-              <span className="crystal-modal-name">{crystal.id}</span>
-              <button type="button" className="crystal-modal-close" onClick={closePanel}>
-                Close
-              </button>
-            </div>
-            <div className={`crystal-modal-body${panelReady ? ' crystal-modal-body--in' : ''}`}>
+        <div className="crystal-inline" role="dialog" aria-modal="true" aria-label={crystal.id}>
+          <button type="button" className="crystal-inline-dismiss" aria-label="Close" onClick={closePanel} />
+          <div className={`crystal-inline-content${panelReady ? ' crystal-inline-content--in' : ''}`}>
               {(crystal.id === 'ChatGPT' || crystal.id === 'Grok' || crystal.id === 'Gemini') && crystal.leaf && (
                 <AIStack focusModel={crystal.id} defaultLeaf={crystal.leaf} />
               )}
@@ -417,7 +430,6 @@ function App() {
                   </div>
                 </div>
               )}
-            </div>
           </div>
         </div>
       )}
