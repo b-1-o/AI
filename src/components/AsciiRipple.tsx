@@ -1,8 +1,14 @@
 import { useEffect, useRef } from 'react'
 
-const TEXT = 'AI CODE REACT NEXT.JS TYPESCRIPT GITHUB VERCEL REACT BITS MOTION API UI UX DESIGN SYSTEMS EXPERIMENTS '
+const TEXT =
+  'AI CODE REACT NEXT.JS TYPESCRIPT GITHUB VERCEL REACT BITS MOTION API UI UX DESIGN SYSTEMS EXPERIMENTS '
 
-export default function AsciiRipple() {
+type AsciiRippleProps = {
+  className?: string
+  dense?: boolean
+}
+
+export default function AsciiRipple({ className = 'ascii-ripple', dense = true }: AsciiRippleProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const ripples = useRef<Array<{ x: number; y: number; strength: number }>>([])
   const pointer = useRef({ down: false })
@@ -26,7 +32,7 @@ export default function AsciiRipple() {
       width = canvas.clientWidth
       height = canvas.clientHeight
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.1)
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.25)
       canvas.width = Math.floor(width * dpr)
       canvas.height = Math.floor(height * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -34,9 +40,8 @@ export default function AsciiRipple() {
       ctx.textBaseline = 'middle'
       ctx.fillStyle = '#ffffff'
 
-      // Sparser grid — still looks dense, ~2.5× fewer glyphs
-      const stepX = width < 600 ? 14 : 13
-      const stepY = width < 600 ? 20 : 18
+      const stepX = dense ? (width < 600 ? 12 : 11) : width < 600 ? 14 : 13
+      const stepY = dense ? (width < 600 ? 17 : 16) : width < 600 ? 20 : 18
       const next: Array<{ x: number; y: number; char: string }> = []
       let cursor = 0
 
@@ -52,7 +57,7 @@ export default function AsciiRipple() {
 
     const addRipple = (x: number, y: number, strength: number) => {
       ripples.current.push({ x, y, strength })
-      if (ripples.current.length > 8) ripples.current.shift()
+      if (ripples.current.length > 12) ripples.current.shift()
       hasActivity = true
       idleFrames = 0
       if (visible.current && frame === 0) {
@@ -85,10 +90,15 @@ export default function AsciiRipple() {
       const rippleList = ripples.current
       const len = rippleList.length
 
-      // When completely idle, draw once more then sleep
       if (len === 0 && !hasActivity) {
         idleFrames += 1
         if (idleFrames > 3) {
+          ctx.clearRect(0, 0, width, height)
+          ctx.globalAlpha = 0.045
+          for (const point of charPositions) {
+            ctx.fillText(point.char, point.x, point.y)
+          }
+          ctx.globalAlpha = 1
           frame = 0
           return
         }
@@ -101,7 +111,6 @@ export default function AsciiRipple() {
       const positions = charPositions
       const posLen = positions.length
 
-      // Pre-compute ripple data once per frame
       for (let pi = 0; pi < posLen; pi++) {
         const point = positions[pi]
         let wave = 0
@@ -118,11 +127,11 @@ export default function AsciiRipple() {
         }
 
         const intensity = Math.min(1, Math.abs(wave))
-        ctx.globalAlpha = 0.04 + intensity * 0.12
+        ctx.globalAlpha = 0.04 + intensity * 0.14
         ctx.fillText(point.char, point.x, point.y + Math.sin(wave) * 2)
 
         if (intensity > 0.5) {
-          ctx.globalAlpha = 0.15
+          ctx.globalAlpha = 0.18
           ctx.fillText('@', point.x, point.y)
         }
       }
@@ -153,7 +162,6 @@ export default function AsciiRipple() {
         visible.current = Boolean(entry?.isIntersecting)
 
         if (visible.current && frame === 0) {
-          // Always paint at least one frame when entering viewport
           hasActivity = true
           idleFrames = 0
           frame = requestAnimationFrame(draw)
@@ -169,7 +177,7 @@ export default function AsciiRipple() {
     observer.observe(canvas)
 
     window.addEventListener('resize', resize, { passive: true })
-    // Only listen while canvas is in view — cheaper
+
     const onPointerMove = (e: PointerEvent) => {
       if (!visible.current) return
       pointerMove(e)
@@ -191,7 +199,7 @@ export default function AsciiRipple() {
       window.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('pointerup', pointerUp)
     }
-  }, [])
+  }, [dense])
 
-  return <canvas ref={canvasRef} className="ascii-ripple" aria-hidden="true" />
+  return <canvas ref={canvasRef} className={className} aria-hidden="true" />
 }
