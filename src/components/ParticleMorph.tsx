@@ -365,7 +365,7 @@ export default function ParticleMorph({
         const aspect = width / height
         // Keep the mobile composition comfortably inside the screen.
         // Desktop keeps the existing scale; phones use a smaller fit.
-        const fit = width < 720 ? 0.84 : 1.18
+        const fit = width < 720 ? 0.80 : 1.18
         gl.uniform2f(
           uniformScale,
           (2.0 * fit) / Math.max(0.0001, aspect),
