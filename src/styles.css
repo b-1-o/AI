@@ -81,13 +81,24 @@ body, canvas { overscroll-behavior: none; }
 .morph-caption {
   position: absolute;
   bottom: 10vh;
+  max-width: min(680px, calc(100% - 40px));
   font-size: clamp(0.92rem, 1.1vw, 1.08rem);
   letter-spacing: 0.02em;
   color: rgba(244, 244, 242, 0.8);
   will-change: opacity, transform;
+  text-align: center;
 }
 
-.morph-caption span { display: block; max-width: 680px; }
+/* Only the outer wrapper is block — never force block on every nested span */
+.morph-caption > .decrypted-caption {
+  display: inline-block;
+  max-width: 100%;
+  white-space: pre-wrap;
+}
+
+.morph-caption .decrypted-caption span {
+  display: inline;
+}
 
 .intro-ui {
   position: absolute;
@@ -167,14 +178,10 @@ body, canvas { overscroll-behavior: none; }
 }
 
 .decrypted-encrypted {
+  display: inline;
   opacity: 0.42;
   color: rgba(244, 244, 242, 0.55);
   font-family: var(--mono);
-}
-
-.morph-caption .decrypted-caption {
-  display: block;
-  max-width: 680px;
 }
 
 .section-pad {
