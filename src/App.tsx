@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ParticleMorph from './components/ParticleMorph'
 import AsciiRipple from './components/AsciiRipple'
+import DecryptedText from './components/DecryptedText'
 import b1oImage from '../assets/b1o.jpg'
 import ballImage from '../assets/ball.jpg'
 import keyboardImage from '../assets/keyboard.jpg'
@@ -35,6 +36,8 @@ const SNAP_DELAY = 280
 
 function App() {
   const [isComplete, setIsComplete] = useState(false)
+  const [globeActive, setGlobeActive] = useState(false)
+  const [keyboardActive, setKeyboardActive] = useState(false)
 
   const targetProgressRef = useRef(0)
   const renderedProgressRef = useRef(0)
@@ -42,6 +45,8 @@ function App() {
   const lastDirectionRef = useRef(0)
   const snapTimerRef = useRef<number | null>(null)
   const wakeAnimationRef = useRef<(() => void) | null>(null)
+  const globeActiveRef = useRef(false)
+  const keyboardActiveRef = useRef(false)
 
   const introImageRef = useRef<HTMLDivElement | null>(null)
   const globeCaptionRef = useRef<HTMLDivElement | null>(null)
@@ -123,6 +128,18 @@ function App() {
         keyboardCaptionRef.current.style.opacity = String(keyboardOpacity)
         keyboardCaptionRef.current.style.transform =
           'translate3d(0,' + (20 - keyboardOpacity * 20) + 'px,0)'
+      }
+
+      const nextGlobe = globeOpacity > 0.35
+      if (nextGlobe !== globeActiveRef.current) {
+        globeActiveRef.current = nextGlobe
+        setGlobeActive(nextGlobe)
+      }
+
+      const nextKeyboard = keyboardOpacity > 0.35
+      if (nextKeyboard !== keyboardActiveRef.current) {
+        keyboardActiveRef.current = nextKeyboard
+        setKeyboardActive(nextKeyboard)
       }
 
       const nextCompleted = progress >= 1.995
@@ -251,7 +268,16 @@ function App() {
             className="morph-caption morph-caption-globe"
             style={{ opacity: 0 }}
           >
-            <span>AI is not enemy, it's tool</span>
+            <DecryptedText
+              text="AI is not enemy, it's tool"
+              animateOn="active"
+              active={globeActive}
+              sequential
+              speed={28}
+              revealDirection="start"
+              parentClassName="decrypted-caption"
+              encryptedClassName="decrypted-encrypted"
+            />
           </div>
 
           <div
@@ -259,7 +285,16 @@ function App() {
             className="morph-caption morph-caption-keyboard"
             style={{ opacity: 0 }}
           >
-            <span>I use AI as tool, and here's how I do it...</span>
+            <DecryptedText
+              text="I use AI as tool, and here's how I do it..."
+              animateOn="active"
+              active={keyboardActive}
+              sequential
+              speed={26}
+              revealDirection="start"
+              parentClassName="decrypted-caption"
+              encryptedClassName="decrypted-encrypted"
+            />
           </div>
         </div>
 
@@ -270,12 +305,16 @@ function App() {
       </section>
 
       <main className="content">
+        <div className="content-ascii-bg" aria-hidden="true">
+          <AsciiRipple dense className="ascii-ripple ascii-ripple-page" />
+        </div>
+
         <section className="statement section-pad">
           <div className="eyebrow">01 — PRINCIPLE</div>
           <h1>
             AI is not the product.
             <br />
-            <span>It's part of the process.</span>
+            <span>It&apos;s part of the process.</span>
           </h1>
           <p>
             I use AI as a tool for research, prototyping, implementation, debugging and iteration.
@@ -285,7 +324,6 @@ function App() {
 
         <section className="workflow section-pad">
           <div className="ascii-wrap">
-            <AsciiRipple />
             <div className="ascii-content">
               <div className="eyebrow">02 — WORKFLOW</div>
               <h2>How I use AI.</h2>
@@ -336,7 +374,7 @@ function App() {
 
         <section className="contact section-pad">
           <div className="eyebrow">05 — CONTACT</div>
-          <h2>Let's build something worth remembering.</h2>
+          <h2>Let&apos;s build something worth remembering.</h2>
           <div className="contact-row">
             <a href="https://github.com/b-1-o" target="_blank" rel="noreferrer">GitHub ↗</a>
             <a href="https://www.linkedin.com/in/b1o" target="_blank" rel="noreferrer">LinkedIn ↗</a>
