@@ -363,7 +363,9 @@ export default function ParticleMorph({
         // Use the canvas's real CSS size. On mobile the viewport height can
         // differ from 100svh, which previously made round particles look stretched.
         const aspect = width / height
-        const fit = 1.18
+        // Keep the mobile composition comfortably inside the screen.
+        // Desktop keeps the existing scale; phones use a smaller fit.
+        const fit = width < 720 ? 0.84 : 1.18
         gl.uniform2f(
           uniformScale,
           (2.0 * fit) / Math.max(0.0001, aspect),
