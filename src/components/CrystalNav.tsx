@@ -1,3 +1,4 @@
+import './CrystalNav.css'
 import { ModelLogo } from './Logos'
 
 export type CrystalId = 'ChatGPT' | 'Grok' | 'Gemini' | 'Work' | 'Contact'

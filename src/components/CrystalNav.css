@@ -1,0 +1,184 @@
+.menu-hub-crystals {
+  position: relative;
+  z-index: 2;
+  padding: 8px 0 20px;
+}
+
+.crystal-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.crystal {
+  position: relative;
+  flex: 1 1 120px;
+  min-width: 110px;
+  max-width: 180px;
+  min-height: 132px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.crystal-facet {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 4px;
+  transition:
+    opacity 280ms ease,
+    transform 320ms cubic-bezier(0.23, 1, 0.32, 1),
+    filter 280ms ease;
+}
+
+.crystal-facet--a {
+  clip-path: polygon(50% 0%, 100% 28%, 82% 100%, 18% 100%, 0% 28%);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.02) 55%, transparent),
+    rgba(18, 18, 20, 0.9);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+}
+
+.crystal-facet--b {
+  clip-path: polygon(50% 0%, 100% 28%, 82% 100%, 18% 100%, 0% 28%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 42%);
+  opacity: 0.55;
+  transform: scale(0.96);
+}
+
+.crystal-facet--c {
+  clip-path: polygon(50% 8%, 78% 100%, 22% 100%);
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,0.06));
+  opacity: 0.4;
+}
+
+.crystal-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  min-height: 132px;
+  padding: 28px 10px 22px;
+  text-align: center;
+}
+
+.crystal-logo {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: #f4f4f2;
+  filter: drop-shadow(0 0 12px rgba(255,255,255,0.12));
+}
+
+.crystal-glyph {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: rgba(244,244,242,0.85);
+}
+
+.crystal-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgba(244,244,242,0.88);
+}
+
+.crystal-hint {
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(244,244,242,0.32);
+}
+
+.crystal:hover .crystal-facet--a {
+  border-color: rgba(255,255,255,0.22);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.4), 0 0 24px rgba(255,255,255,0.04);
+}
+
+.crystal:hover .crystal-facet--b {
+  opacity: 0.75;
+}
+
+.crystal--active .crystal-facet--a {
+  border-color: rgba(255,255,255,0.35);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.04) 50%, transparent),
+    rgba(28, 28, 30, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08) inset,
+    0 18px 40px rgba(0,0,0,0.45),
+    0 0 40px rgba(255,255,255,0.06);
+  transform: translateY(-4px) scale(1.02);
+}
+
+.crystal--active .crystal-facet--b {
+  opacity: 0.9;
+}
+
+.crystal--active .crystal-label {
+  color: #fff;
+}
+
+.crystal--active .crystal-hint {
+  color: rgba(244,244,242,0.5);
+}
+
+.menu-hub-stage--full {
+  max-height: none;
+  padding-top: 8px;
+}
+
+.menu-hub-model-sub--below {
+  margin: 10px 0 28px;
+}
+
+.menu-hub-back--ghost {
+  opacity: 0.35;
+  border-color: transparent;
+  background: transparent;
+  padding: 6px 0;
+}
+
+.menu-hub-back--ghost:hover {
+  opacity: 0.7;
+  background: transparent;
+}
+
+.menu-hub-work .scroll-float,
+.menu-hub-contact .scroll-float,
+.menu-hub-ai .scroll-float {
+  margin-bottom: 4px;
+}
+
+@media (max-width: 720px) {
+  .crystal {
+    flex: 1 1 calc(33.33% - 10px);
+    max-width: none;
+    min-height: 112px;
+  }
+  .crystal-inner {
+    min-height: 112px;
+    padding: 22px 6px 16px;
+  }
+  .crystal-logo {
+    width: 32px;
+    height: 32px;
+  }
+}
