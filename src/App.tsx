@@ -12,7 +12,6 @@ import palatImage from '../assets/palat.jpeg'
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
 const particleImages = [b1oImage, ballImage, keyboardImage, crystalImage]
 
-/** Crystals after keyboard — all same 3D form, same page, modal on click */
 const CRYSTALS = [
   { id: 'ChatGPT', caption: 'ChatGPT — initial build', leaf: 'gpt-role' },
   { id: 'Grok', caption: 'Grok — perfect finish', leaf: 'grok-role' },
@@ -25,10 +24,10 @@ const BALL_STOP = 1
 const KEYBOARD_STOP = 2
 const CRYSTAL_START = 3
 const MAX_PROGRESS = CRYSTAL_START + (CRYSTALS.length - 1)
-const DESKTOP_SENSITIVITY = 0.00105
-const TOUCH_SENSITIVITY = 0.00155
-const MORPH_SPEED = 1.3
-const SNAP_DELAY = 280
+const DESKTOP_SENSITIVITY = 0.00085
+const TOUCH_SENSITIVITY = 0.00125
+const MORPH_SPEED = 0.85
+const SNAP_DELAY = 340
 
 const projects = [
   { name: 'HEAVEN', type: 'Developer command center', stack: 'Next.js · TypeScript · PostgreSQL · Vercel', href: 'https://heaven-b1o.vercel.app/' },
@@ -64,6 +63,8 @@ function App() {
   const targetProgressRef = useRef(0)
   const renderedProgressRef = useRef(0)
   const morphProgressRef = useRef(0)
+  const dissolveRef = useRef(0)
+  const dissolveAnimRef = useRef<number | null>(null)
   const lastTouchY = useRef(0)
   const lastDirectionRef = useRef(0)
   const snapTimerRef = useRef<number | null>(null)
@@ -146,8 +147,29 @@ function App() {
 
     const idx = crystalIndex(next)
     if (idx >= 0 && idx !== activeCrystalRef.current) {
+      const prev = activeCrystalRef.current
       activeCrystalRef.current = idx
       setActiveCrystal(idx)
+      if (prev >= 0 && crystalActiveRef.current) {
+        if (dissolveAnimRef.current) cancelAnimationFrame(dissolveAnimRef.current)
+        const start = performance.now()
+        const DUR = 900
+        const run = (now: number) => {
+          const u = Math.min(1, (now - start) / DUR)
+          if (u < 0.45) {
+            dissolveRef.current = u / 0.45
+          } else {
+            dissolveRef.current = 1 - (u - 0.45) / 0.55
+          }
+          if (u < 1) {
+            dissolveAnimRef.current = requestAnimationFrame(run)
+          } else {
+            dissolveRef.current = 0
+            dissolveAnimRef.current = null
+          }
+        }
+        dissolveAnimRef.current = requestAnimationFrame(run)
+      }
     }
   }, [])
 
@@ -161,7 +183,7 @@ function App() {
       const current = renderedProgressRef.current
       const delta = target - current
       if (Math.abs(delta) > 0.00008) {
-        renderedProgressRef.current = current + delta * Math.min(1, MORPH_SPEED * 0.085)
+        renderedProgressRef.current = current + delta * Math.min(1, MORPH_SPEED * 0.055)
         applyProgress(renderedProgressRef.current)
         raf = requestAnimationFrame(tick)
       } else {
@@ -216,6 +238,7 @@ function App() {
       running = false
       if (raf) cancelAnimationFrame(raf)
       if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
+      if (dissolveAnimRef.current) cancelAnimationFrame(dissolveAnimRef.current)
       window.removeEventListener('wheel', onWheel)
       window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouchMove)
@@ -254,6 +277,7 @@ function App() {
         <ParticleMorph
           images={particleImages}
           progressRef={morphProgressRef}
+          dissolveRef={dissolveRef}
           particleDensity={1}
           className="particle-canvas"
         />
