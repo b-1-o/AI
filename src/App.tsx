@@ -33,10 +33,10 @@ const MORPH_SPEED = 0.85
 const SNAP_DELAY = 340
 
 const projects = [
-  { name: 'nothing', type: 'Product design experiment', stack: 'React · Visual systems · Interaction', href: 'https://github.com/b-1-o/nothing' },
-  { name: 'b1api', type: 'Developer API experiment', stack: 'TypeScript · APIs · Tooling', href: 'https://github.com/b-1-o/b1api' },
+  { name: 'nothing', type: 'Product design experiment', stack: 'React · Visual systems · Interaction', href: 'https://b-1-o.github.io/nothing/' },
+  { name: 'b1api', type: 'Developer API experiment', stack: 'TypeScript · APIs · Tooling', href: 'https://b-1-o.github.io/music/' },
   { name: 'coffee', type: 'Homemade coffee & dessert experience', stack: 'React · Motion · Product UI', href: 'https://b-1-o.github.io/coffee/' },
-  { name: 'portfolio', type: 'Personal portfolio', stack: 'React · Motion · Design systems', href: 'https://b-1-o.github.io/' },
+  { name: 'portfolio', type: 'Personal portfolio', stack: 'React · Motion · Design systems', href: 'https://b-1-o.github.io/portfolio/' },
   { name: 'myUI', type: 'Experimental frontend / UI system', stack: 'React · TypeScript · Motion · GitHub Pages', href: 'https://b-1-o.github.io/myUI/' },
   { name: 'heaven', type: 'Developer command center', stack: 'Next.js · TypeScript · PostgreSQL · Vercel', href: 'https://heaven-b1o.vercel.app/' },
 ]
@@ -96,29 +96,14 @@ function App() {
       const stops: number[] = [0, BALL_STOP, KEYBOARD_STOP]
       for (let i = 0; i < CRYSTALS.length; i++) stops.push(CRYSTAL_START + i)
       let target = current
-      let wrap = false
       if (dir > 0) {
         const next = stops.find((s) => s > current + 0.08)
-        if (next !== undefined) target = next
-        else {
-          target = 0
-          wrap = true
-        }
+        target = next !== undefined ? next : 0
       } else if (dir < 0) {
         const prev = [...stops].reverse().find((s) => s < current - 0.08)
-        if (prev !== undefined) target = prev
-        else {
-          target = MAX_PROGRESS
-          wrap = true
-        }
+        target = prev !== undefined ? prev : MAX_PROGRESS
       }
-      if (wrap) {
-        targetProgressRef.current = target
-        renderedProgressRef.current = target
-        applyProgressRef.current(target)
-      } else {
-        targetProgressRef.current = clamp(target, 0, MAX_PROGRESS)
-      }
+      targetProgressRef.current = clamp(target, 0, MAX_PROGRESS)
       wakeAnimationRef.current?.()
     }, SNAP_DELAY)
   }, [])
