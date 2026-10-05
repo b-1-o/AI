@@ -283,11 +283,7 @@ function App() {
       }
 
       if (modalOpenRef.current) {
-        if (activeCrystalRef.current > 0) {
-          closePanel()
-        } else {
-          return
-        }
+        closePanel()
       }
 
       targetProgressRef.current = clamp(
@@ -321,11 +317,7 @@ function App() {
       }
 
       if (modalOpenRef.current) {
-        if (activeCrystalRef.current > 0) {
-          closePanel()
-        } else {
-          return
-        }
+        closePanel()
       }
 
       targetProgressRef.current = clamp(
