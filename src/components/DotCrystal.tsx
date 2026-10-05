@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import crystalSrc from '../../assets/crystal.jpg'
 
 type DotCrystalProps = {
   progress?: number
@@ -8,133 +9,95 @@ type DotCrystalProps = {
   seed?: number
 }
 
-type Pt = { x: number; y: number; z: number; r: number }
+type Pt = { x: number; y: number; z: number; s: number }
 
-const rand = (i: number, seed: number) => {
-  const x = Math.sin(i * 12.9898 + seed * 78.233) * 43758.5453
-  return x - Math.floor(x)
-}
+let sharedPoints: Pt[] | null = null
+let sharedPromise: Promise<Pt[]> | null = null
 
-/** Single hexagonal crystal shaft with pointed tip (amethyst-like) */
-function addCrystalShaft(
-  pts: Pt[],
-  ox: number,
-  oz: number,
-  height: number,
-  radius: number,
-  leanX: number,
-  leanZ: number,
-  seed: number,
-  baseI: number,
-) {
-  const sides = 6
-  const rings = Math.max(8, Math.floor(height * 28))
-  const tipStart = 0.72
+function sampleCrystal(size = 480): Promise<Pt[]> {
+  if (sharedPoints) return Promise.resolve(sharedPoints)
+  if (sharedPromise) return sharedPromise
 
-  for (let ri = 0; ri <= rings; ri++) {
-    const t = ri / rings
-    const y = -0.55 + t * height
-
-    let rMul = 1
-    if (t > tipStart) {
-      rMul = 1 - (t - tipStart) / (1 - tipStart)
-      rMul = Math.max(0.02, rMul * rMul)
-    } else {
-      rMul = 0.92 + 0.08 * (t / tipStart)
-    }
-
-    const rr = radius * rMul
-    const lx = leanX * t
-    const lz = leanZ * t
-    const density = t > tipStart ? sides * 2 : sides
-
-    for (let s = 0; s < density; s++) {
-      const a = (s / density) * Math.PI * 2 + ri * 0.08
-      const hex = 0.88 + 0.12 * Math.cos(a * 3)
-      const px = ox + lx + Math.cos(a) * rr * hex
-      const pz = oz + lz + Math.sin(a) * rr * hex
-      const jitter = (rand(baseI + ri * 20 + s, seed) - 0.5) * 0.012
-      pts.push({
-        x: px + jitter,
-        y: y + jitter * 0.5,
-        z: pz + jitter,
-        r: t > tipStart ? 0.55 + rand(baseI + s, seed) * 0.5 : 0.75 + rand(baseI + s + 3, seed) * 0.9,
-      })
-    }
-
-    if (ri % 2 === 0 && rr > 0.04) {
-      for (let k = 0; k < 3; k++) {
-        const a = rand(baseI + ri * 11 + k, seed) * Math.PI * 2
-        const rad = rr * (0.15 + rand(baseI + k + 9, seed) * 0.55)
-        pts.push({
-          x: ox + lx + Math.cos(a) * rad,
-          y,
-          z: oz + lz + Math.sin(a) * rad,
-          r: 0.45 + rand(baseI + k, seed) * 0.4,
-        })
+  sharedPromise = new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
+      if (!ctx) {
+        reject(new Error('2d unavailable'))
+        return
       }
+      ctx.fillStyle = '#000'
+      ctx.fillRect(0, 0, size, size)
+      const scale = Math.min(size / image.width, size / image.height) * 0.92
+      const dw = image.width * scale
+      const dh = image.height * scale
+      ctx.drawImage(image, (size - dw) / 2, (size - dh) / 2, dw, dh)
+      const data = ctx.getImageData(0, 0, size, size).data
+      const raw: { x: number; y: number; s: number }[] = []
+
+      for (let y = 0; y < size; y += 1) {
+        for (let x = 0; x < size; x += 1) {
+          const i = (y * size + x) * 4
+          const b = (data[i] + data[i + 1] + data[i + 2]) / (255 * 3)
+          if (b < 0.22) continue
+          raw.push({
+            x: x / size - 0.5,
+            y: 0.5 - y / size,
+            s: Math.min(1, (b - 0.22) / 0.78),
+          })
+        }
+      }
+
+      let sx = 0
+      let sy = 0
+      for (const p of raw) {
+        sx += p.x
+        sy += p.y
+      }
+      const n = Math.max(1, raw.length)
+      const cx = sx / n
+      const cy = sy / n
+
+      let maxR = 0.01
+      for (const p of raw) {
+        maxR = Math.max(maxR, Math.abs(p.x - cx))
+      }
+
+      const pts: Pt[] = raw.map((p) => {
+        const nx = (p.x - cx) / maxR
+        const z = Math.sqrt(Math.max(0, 1 - nx * nx)) * (0.22 + p.s * 0.28)
+        const side = Math.sin(p.x * 90.1 + p.y * 40.3) > 0 ? 1 : -1
+        return {
+          x: p.x - cx,
+          y: p.y - cy,
+          z: z * side,
+          s: p.s,
+        }
+      })
+
+      const MAX = 5500
+      let final = pts
+      if (pts.length > MAX) {
+        const step = pts.length / MAX
+        final = Array.from({ length: MAX }, (_, i) => pts[Math.min(pts.length - 1, Math.floor(i * step))])
+      }
+
+      sharedPoints = final
+      resolve(final)
     }
-  }
-
-  pts.push({
-    x: ox + leanX,
-    y: -0.55 + height + 0.01,
-    z: oz + leanZ,
-    r: 1.2,
-  })
-}
-
-/** Amethyst-style cluster: several shafts from a base */
-function buildCluster(seed: number): Pt[] {
-  const pts: Pt[] = []
-
-  for (let i = 0; i < 90; i++) {
-    const a = rand(i, seed) * Math.PI * 2
-    const rad = Math.sqrt(rand(i + 50, seed)) * 0.55
-    const y = -0.62 + rand(i + 90, seed) * 0.18
-    pts.push({
-      x: Math.cos(a) * rad,
-      y,
-      z: Math.sin(a) * rad * 0.9,
-      r: 0.5 + rand(i + 7, seed) * 0.8,
-    })
-  }
-
-  addCrystalShaft(pts, 0.02, 0.0, 1.55, 0.22, 0.04, -0.02, seed, 100)
-
-  const satellites = [
-    { x: 0.28, z: 0.12, h: 1.05, r: 0.14, lx: 0.12, lz: 0.06 },
-    { x: -0.24, z: 0.18, h: 0.95, r: 0.13, lx: -0.1, lz: 0.08 },
-    { x: 0.18, z: -0.26, h: 0.88, r: 0.12, lx: 0.08, lz: -0.12 },
-    { x: -0.2, z: -0.2, h: 0.72, r: 0.1, lx: -0.08, lz: -0.08 },
-    { x: 0.36, z: -0.08, h: 0.62, r: 0.09, lx: 0.14, lz: -0.02 },
-    { x: -0.32, z: 0.02, h: 0.58, r: 0.085, lx: -0.12, lz: 0.02 },
-    { x: 0.08, z: 0.32, h: 0.5, r: 0.08, lx: 0.02, lz: 0.14 },
-  ]
-
-  satellites.forEach((s, idx) => {
-    const jx = (rand(idx * 3, seed) - 0.5) * 0.06
-    const jz = (rand(idx * 3 + 1, seed) - 0.5) * 0.06
-    const jh = 0.9 + rand(idx * 3 + 2, seed) * 0.2
-    addCrystalShaft(
-      pts,
-      s.x + jx,
-      s.z + jz,
-      s.h * jh,
-      s.r,
-      s.lx,
-      s.lz,
-      seed + idx,
-      200 + idx * 80,
-    )
+    image.onerror = () => reject(new Error('crystal load failed'))
+    image.src = crystalSrc
   })
 
-  return pts
+  return sharedPromise
 }
 
 export default function DotCrystal({
   progress = 0.5,
-  spin = 0.45,
+  spin = 0.55,
   active = false,
   className = '',
   seed = 1,
@@ -153,12 +116,31 @@ export default function DotCrystal({
 
     let raf = 0
     let running = true
-    const points = buildCluster(seed)
-    let rotY = seed * 0.7
+    let points: Pt[] = []
+    let rotY = seed * 1.1
     let last = performance.now()
+    let inView = true
+
+    const io =
+      typeof IntersectionObserver !== 'undefined'
+        ? new IntersectionObserver(
+            (entries) => {
+              inView = entries.some((e) => e.isIntersecting)
+            },
+            { rootMargin: '80px', threshold: 0.01 },
+          )
+        : null
+    if (io) io.observe(canvas)
+
+    sampleCrystal()
+      .then((pts) => {
+        if (!running) return
+        points = pts
+      })
+      .catch(() => {})
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
       const rect = canvas.getBoundingClientRect()
       const w = Math.max(1, Math.floor(rect.width * dpr))
       const h = Math.max(1, Math.floor(rect.height * dpr))
@@ -166,47 +148,47 @@ export default function DotCrystal({
         canvas.width = w
         canvas.height = h
       }
+      return dpr
     }
 
     const draw = (now: number) => {
       if (!running) return
       const dt = Math.min((now - last) / 1000, 0.05)
       last = now
-      resize()
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      if (!inView || points.length === 0) {
+        raf = requestAnimationFrame(draw)
+        return
+      }
+
+      const dpr = resize()
       const w = canvas.width
       const h = canvas.height
-      const cx = w / 2
-      const cy = h * 0.58
-      const scale = Math.min(w, h) * 0.42
+      const cx = w * 0.5
+      const cy = h * 0.55
+      const scale = Math.min(w, h) * 0.95
 
       const p = progressRef.current
       rotY += spin * dt
-      const scrollRot = p * Math.PI * 2
-      const displayY = rotY + scrollRot
-      const rotX = 0.35
-
-      const cosY = Math.cos(displayY)
-      const sinY = Math.sin(displayY)
-      const cosX = Math.cos(rotX)
-      const sinX = Math.sin(rotX)
+      const scrollSpin = (p - 0.5) * Math.PI * 1.6
+      const angle = rotY + scrollSpin
+      const cosY = Math.cos(angle)
+      const sinY = Math.sin(angle)
+      const tilt = 0.42
+      const cosX = Math.cos(tilt)
+      const sinX = Math.sin(tilt)
 
       ctx.clearRect(0, 0, w, h)
 
-      ctx.beginPath()
-      ctx.ellipse(cx, cy + scale * 0.72, scale * 0.42, scale * 0.1, 0, 0, Math.PI * 2)
-      ctx.fillStyle = activeRef.current ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.2)'
-      ctx.fill()
+      if (activeRef.current) {
+        ctx.beginPath()
+        ctx.ellipse(cx, cy + scale * 0.48, scale * 0.28, scale * 0.06, 0, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(0,0,0,0.45)'
+        ctx.fill()
+      }
 
-      const g = ctx.createRadialGradient(cx, cy - scale * 0.1, 0, cx, cy, scale * 1.3)
-      g.addColorStop(0, activeRef.current ? 'rgba(244,244,242,0.06)' : 'rgba(244,244,242,0.025)')
-      g.addColorStop(1, 'transparent')
-      ctx.fillStyle = g
-      ctx.fillRect(0, 0, w, h)
-
-      type Proj = { x: number; y: number; z: number; r: number }
-      const projected: Proj[] = new Array(points.length)
+      type Proj = { x: number; y: number; z: number; s: number }
+      const projected: Proj[] = []
 
       for (let i = 0; i < points.length; i++) {
         const pt = points[i]
@@ -215,22 +197,26 @@ export default function DotCrystal({
         let y = pt.y
         const y2 = y * cosX - z * sinX
         const z2 = y * sinX + z * cosX
-        projected[i] = { x, y: y2, z: z2, r: pt.r }
+        projected.push({ x, y: y2, z: z2, s: pt.s })
       }
 
       projected.sort((a, b) => a.z - b.z)
 
+      const FOCAL = 1.35
       for (const pt of projected) {
-        const depth = (pt.z + 1.4) / 2.8
-        const alpha = 0.12 + depth * 0.82
-        const size =
-          (0.55 + depth * 1.7) * pt.r * dpr * (activeRef.current ? 1.12 : 0.95)
-        const sx = cx + pt.x * scale
-        const sy = cy + pt.y * scale
+        const persp = FOCAL / (FOCAL + pt.z)
+        const sx = cx + pt.x * scale * persp
+        const sy = cy + pt.y * scale * persp
+        const depth = (pt.z + 0.55) / 1.1
+        const alpha = Math.min(1, 0.18 + depth * 0.75) * (0.55 + pt.s * 0.45)
+        const size = Math.max(
+          0.35 * dpr,
+          (0.7 + depth * 1.6) * (0.6 + pt.s) * dpr * (activeRef.current ? 1.1 : 0.95),
+        )
 
         ctx.beginPath()
-        ctx.arc(sx, sy, Math.max(0.4 * dpr, size), 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(244,244,242,${Math.min(1, alpha).toFixed(3)})`
+        ctx.arc(sx, sy, size, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(244,244,242,${alpha.toFixed(3)})`
         ctx.fill()
       }
 
@@ -238,12 +224,11 @@ export default function DotCrystal({
     }
 
     raf = requestAnimationFrame(draw)
-    window.addEventListener('resize', resize)
 
     return () => {
       running = false
       cancelAnimationFrame(raf)
-      window.removeEventListener('resize', resize)
+      if (io) io.disconnect()
     }
   }, [seed, spin])
 
