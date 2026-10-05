@@ -78,25 +78,18 @@ const DETAILS: Record<string, Detail> = {
     connects: ['GitHub'],
   },
   'gem-role': {
-    title: 'Gemini — visual layer',
+    title: 'Gemini — images & effects',
     tag: 'VISUAL',
-    role: 'Imagery',
-    body: 'Gemini generates the images the site needs: hero art, product frames, mood pieces and supporting visuals that match the direction of the build.',
-    connects: [],
+    role: 'Look & feel',
+    body: 'Gemini generates the images, particle moods and visual accents the site needs — consistent direction so motion and stills feel like one system.',
+    connects: ['Unsplash'],
   },
-  'gem-fx': {
-    title: 'Gemini — effects & particles',
-    tag: 'MOTION',
-    role: 'Atmosphere',
-    body: 'Beyond still frames, Gemini helps shape visual effects language — particle systems, light, texture cues and the small details that make an interface feel alive.',
-    connects: [],
-  },
-  'gem-style': {
-    title: 'Gemini — style lock',
-    tag: 'DIRECTION',
-    role: 'Consistency',
-    body: 'Once a visual direction is chosen, Gemini keeps assets coherent across pages so the site does not feel like a collage of unrelated images.',
-    connects: [],
+  'gem-images': {
+    title: 'Gemini — generation',
+    tag: 'IMAGES',
+    role: 'Production',
+    body: 'From hero frames to micro details, Gemini covers the visual layer while the structure and finish stay with ChatGPT and Grok.',
+    connects: ['Unsplash'],
   },
 }
 
@@ -121,9 +114,8 @@ const MENU: BranchedMenuItem[] = [
   {
     label: 'Gemini',
     children: [
-      { value: 'gem-role', label: 'Image generation', icon: icons.image },
-      { value: 'gem-fx', label: 'Effects & particles', icon: icons.spark },
-      { value: 'gem-style', label: 'Style lock', icon: icons.rocket },
+      { value: 'gem-role', label: 'Images & effects', icon: icons.image },
+      { value: 'gem-images', label: 'Generation', icon: icons.rocket },
     ],
   },
 ]
@@ -140,14 +132,14 @@ export default function AIStack({ focusModel, defaultLeaf }: AIStackProps) {
 
   const initial =
     defaultLeaf ??
-    items[0]?.children?.[0]?.value ??
+    (items[0]?.children?.[0] as { value: string } | undefined)?.value ??
     'gpt-role'
 
   const [active, setActive] = useState(initial)
   const detail = DETAILS[active] ?? DETAILS[initial] ?? DETAILS['gpt-role']
 
   return (
-    <div className="ai-stack">
+    <div className={`ai-stack${focusModel ? ' ai-stack--focus' : ''}`}>
       <div className="ai-stack-nav">
         <BranchedMenu
           items={items}
@@ -157,9 +149,9 @@ export default function AIStack({ focusModel, defaultLeaf }: AIStackProps) {
           color="#f4f4f2"
           accentColor="#f4f4f2"
           lineColor="rgba(244,244,242,0.18)"
-          width={280}
-          rowHeight={38}
-          indent={44}
+          width={focusModel ? 220 : 280}
+          rowHeight={40}
+          indent={40}
           trunk={14}
           radius={10}
           lineWidth={1.4}
@@ -178,23 +170,14 @@ export default function AIStack({ focusModel, defaultLeaf }: AIStackProps) {
         <h3 className="ai-stack-title">{detail.title}</h3>
         <p className="ai-stack-body">{detail.body}</p>
         <div className="ai-stack-connects">
-          <span className="ai-stack-connects-label">
-            {detail.connects.length > 0 ? 'Connected' : 'Focus'}
-          </span>
+          <span className="ai-stack-connects-label">Connected</span>
           <div className="ai-stack-chips">
-            {detail.connects.length > 0
-              ? detail.connects.map((c) => (
-                  <span key={c} className="ai-stack-chip ai-stack-chip--logo">
-                    <ServiceLogo name={c} size={14} />
-                    {c}
-                  </span>
-                ))
-              : (
-                  <span className="ai-stack-chip ai-stack-chip--logo">
-                    <ModelLogo name="Gemini" size={14} />
-                    Visual generation
-                  </span>
-                )}
+            {detail.connects.map((name) => (
+              <span className="ai-stack-chip ai-stack-chip--logo" key={name}>
+                <ServiceLogo name={name} size={14} />
+                {name}
+              </span>
+            ))}
           </div>
         </div>
       </div>
