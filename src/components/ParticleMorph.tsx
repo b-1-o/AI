@@ -193,10 +193,11 @@ const vertexShader = [
   '  float strength = mix(fromStrength, toStrength, t);',
   '  float alpha = 0.62 + min(0.38, strength * 0.45);',
   '  alpha *= (1.0 - uDissolve * 0.55);',
-  '  alpha = min(1.0, alpha + spark * 0.5);',
+  '  alpha = min(1.0, alpha + spark * 0.55 + step(0.85, edge) * crystalAmt * 0.35 * (1.0 - uPanel));',
   '  vAlpha = alpha;',
-  '  float sizeBoost = 1.0 + spark * 0.9;',
-  '  gl_PointSize = uPixelRatio * (1.45 + strength * 0.5) * sizeBoost;',
+  '  float edgeMark = step(0.85, edge) * crystalAmt * (1.0 - uPanel);',
+  '  float sizeBoost = 1.0 + spark * 0.9 + edgeMark * 1.15;',
+  '  gl_PointSize = uPixelRatio * (1.35 + strength * 0.45 + edgeMark * 0.9) * sizeBoost;',
   '}',
 ].join('\n')
 
