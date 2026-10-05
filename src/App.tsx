@@ -5,19 +5,21 @@ import MenuHub from './components/MenuHub'
 import b1oImage from '../assets/b1o.jpg'
 import ballImage from '../assets/ball.jpg'
 import keyboardImage from '../assets/keyboard.jpg'
+import crystalImage from '../assets/crystal.jpg'
 import palatImage from '../assets/palat.jpeg'
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
-const particleImages = [b1oImage, ballImage, keyboardImage]
+const particleImages = [b1oImage, ballImage, keyboardImage, crystalImage]
 
 const BALL_STOP = 1
-const KEYBOARD_END = 2
+const KEYBOARD_STOP = 2
+const CRYSTAL_END = 3
 const DESKTOP_SENSITIVITY = 0.00105
 const TOUCH_SENSITIVITY = 0.00155
 const MORPH_SPEED = 1.3
 const SNAP_DELAY = 280
-const EXIT_SCROLL_THRESHOLD = 180
-const EXIT_DURATION_MS = 900
+const EXIT_SCROLL_THRESHOLD = 160
+const EXIT_DURATION_MS = 700
 
 type Phase = 'intro' | 'exiting' | 'hub'
 
@@ -25,7 +27,9 @@ function App() {
   const [phase, setPhase] = useState<Phase>('intro')
   const [globeActive, setGlobeActive] = useState(false)
   const [keyboardActive, setKeyboardActive] = useState(false)
+  const [crystalActive, setCrystalActive] = useState(false)
   const [exitT, setExitT] = useState(0)
+  const [crystalOpen, setCrystalOpen] = useState(false)
 
   const targetProgressRef = useRef(0)
   const renderedProgressRef = useRef(0)
@@ -35,6 +39,7 @@ function App() {
   const wakeAnimationRef = useRef<(() => void) | null>(null)
   const globeActiveRef = useRef(false)
   const keyboardActiveRef = useRef(false)
+  const crystalActiveRef = useRef(false)
   const exitAccumRef = useRef(0)
   const returnAccumRef = useRef(0)
   const exitStartRef = useRef(0)
@@ -45,6 +50,7 @@ function App() {
   const introImageRef = useRef<HTMLDivElement | null>(null)
   const globeCaptionRef = useRef<HTMLDivElement | null>(null)
   const keyboardCaptionRef = useRef<HTMLDivElement | null>(null)
+  const crystalCaptionRef = useRef<HTMLDivElement | null>(null)
 
   phaseRef.current = phase
 
@@ -55,8 +61,15 @@ function App() {
       if (phaseRef.current !== 'intro') return
       const current = targetProgressRef.current
       const dir = lastDirectionRef.current
-      if (dir > 0) targetProgressRef.current = current < BALL_STOP ? BALL_STOP : KEYBOARD_END
-      else if (dir < 0) targetProgressRef.current = current > BALL_STOP ? BALL_STOP : 0
+      if (dir > 0) {
+        if (current < BALL_STOP) targetProgressRef.current = BALL_STOP
+        else if (current < KEYBOARD_STOP) targetProgressRef.current = KEYBOARD_STOP
+        else targetProgressRef.current = CRYSTAL_END
+      } else if (dir < 0) {
+        if (current > KEYBOARD_STOP) targetProgressRef.current = KEYBOARD_STOP
+        else if (current > BALL_STOP) targetProgressRef.current = BALL_STOP
+        else targetProgressRef.current = 0
+      }
       snapTimerRef.current = null
       wakeAnimationRef.current?.()
     }, SNAP_DELAY)
@@ -86,15 +99,18 @@ function App() {
   const beginReturn = useCallback(() => {
     if (phaseRef.current !== 'hub') return
     if (exitRafRef.current) cancelAnimationFrame(exitRafRef.current)
-    targetProgressRef.current = KEYBOARD_END
-    renderedProgressRef.current = KEYBOARD_END
+    targetProgressRef.current = CRYSTAL_END
+    renderedProgressRef.current = CRYSTAL_END
     exitAccumRef.current = 0
     returnAccumRef.current = 0
     setExitT(0)
     setGlobeActive(false)
-    setKeyboardActive(true)
+    setKeyboardActive(false)
+    setCrystalActive(true)
     globeActiveRef.current = false
-    keyboardActiveRef.current = true
+    keyboardActiveRef.current = false
+    crystalActiveRef.current = true
+    setCrystalOpen(false)
     phaseRef.current = 'intro'
     setPhase('intro')
     window.scrollTo(0, 0)
@@ -108,20 +124,20 @@ function App() {
     if (phaseRef.current !== 'intro') return
     const direction = Math.sign(delta)
     if (!direction) return
-    const atKeyboard = renderedProgressRef.current >= 1.92
-    if (atKeyboard && direction > 0) {
+    const atCrystal = renderedProgressRef.current >= 2.88
+    if (atCrystal && direction > 0) {
       exitAccumRef.current += Math.abs(delta)
       if (exitAccumRef.current >= EXIT_SCROLL_THRESHOLD) {
         beginExit()
         return
       }
-      targetProgressRef.current = KEYBOARD_END
+      targetProgressRef.current = CRYSTAL_END
       scheduleDirectionalSnap(direction)
       wakeAnimationRef.current?.()
       return
     }
     if (direction < 0) exitAccumRef.current = 0
-    targetProgressRef.current = clamp(targetProgressRef.current + delta * sensitivity, 0, KEYBOARD_END)
+    targetProgressRef.current = clamp(targetProgressRef.current + delta * sensitivity, 0, CRYSTAL_END)
     scheduleDirectionalSnap(direction)
     wakeAnimationRef.current?.()
   }
@@ -138,33 +154,42 @@ function App() {
       const distance = target - current
       const next = Math.abs(distance) <= maxStep ? target : current + Math.sign(distance) * maxStep
       renderedProgressRef.current = next
-      const progress = renderedProgressRef.current
+      const progress = next
       if (introImageRef.current) {
         introImageRef.current.style.opacity = String(clamp(1 - progress / 0.92, 0, 1))
         introImageRef.current.style.transform = 'scale(' + (1 + progress * 0.018) + ')'
       }
       const globeOpacity = clamp(1 - Math.abs(progress - 1) / 0.32, 0, 1)
-      const keyboardOpacity = clamp((progress - 1.58) / 0.3, 0, 1)
+      const keyboardOpacity = clamp(1 - Math.abs(progress - 2) / 0.32, 0, 1)
+      const crystalOpacity = clamp((progress - 2.45) / 0.35, 0, 1)
       if (globeCaptionRef.current) {
         globeCaptionRef.current.style.opacity = String(globeOpacity)
         globeCaptionRef.current.style.transform = 'translate3d(0,' + (12 - globeOpacity * 12) + 'px,0)'
       }
       if (keyboardCaptionRef.current) {
-        keyboardCaptionRef.current.style.opacity = String(keyboardOpacity)
+        keyboardCaptionRef.current.style.opacity = String(keyboardOpacity * (1 - crystalOpacity))
         keyboardCaptionRef.current.style.transform = 'translate3d(0,' + (20 - keyboardOpacity * 20) + 'px,0)'
+      }
+      if (crystalCaptionRef.current) {
+        crystalCaptionRef.current.style.opacity = String(crystalOpacity)
+        crystalCaptionRef.current.style.transform = 'translate3d(0,' + (16 - crystalOpacity * 16) + 'px,0)'
       }
       const nextGlobe = globeOpacity > 0.35
       if (nextGlobe !== globeActiveRef.current) {
         globeActiveRef.current = nextGlobe
         setGlobeActive(nextGlobe)
       }
-      const nextKeyboard = keyboardOpacity > 0.35
+      const nextKeyboard = keyboardOpacity > 0.35 && crystalOpacity < 0.4
       if (nextKeyboard !== keyboardActiveRef.current) {
         keyboardActiveRef.current = nextKeyboard
         setKeyboardActive(nextKeyboard)
       }
-      const settled = Math.abs(target - next) < 0.0001
-      if (!settled) frame = requestAnimationFrame(animate)
+      const nextCrystal = crystalOpacity > 0.4
+      if (nextCrystal !== crystalActiveRef.current) {
+        crystalActiveRef.current = nextCrystal
+        setCrystalActive(nextCrystal)
+      }
+      if (Math.abs(target - next) >= 0.0001) frame = requestAnimationFrame(animate)
       else frame = 0
     }
     wakeAnimationRef.current = () => {
@@ -277,6 +302,14 @@ function App() {
   }, [])
 
   const showIntro = phase === 'intro' || phase === 'exiting'
+  const hint =
+    phase === 'exiting'
+      ? 'ENTERING'
+      : crystalActive
+        ? 'CLICK CRYSTAL · SCROLL FOR MORE'
+        : keyboardActive
+          ? 'SCROLL TO CRYSTAL'
+          : 'SCROLL TO MORPH'
 
   return (
     <div className="site">
@@ -299,6 +332,9 @@ function App() {
           />
           <div className="intro-vignette" />
           <ParticleMorph images={particleImages} progressRef={renderedProgressRef} particleDensity={1} className="particle-canvas" />
+          {crystalActive && phase === 'intro' && (
+            <button type="button" className="crystal-hit" aria-label="Open ChatGPT crystal" onClick={() => setCrystalOpen(true)} />
+          )}
           <div className="intro-copy">
             <div ref={globeCaptionRef} className="morph-caption morph-caption-globe" style={{ opacity: 0 }}>
               <DecryptedText text="AI is not enemy, it's tool" animateOn="active" active={globeActive} sequential speed={28} revealDirection="start" parentClassName="decrypted-caption" encryptedClassName="decrypted-encrypted" />
@@ -306,16 +342,33 @@ function App() {
             <div ref={keyboardCaptionRef} className="morph-caption morph-caption-keyboard" style={{ opacity: 0 }}>
               <DecryptedText text="I use AI as tool, and here's how I do it..." animateOn="active" active={keyboardActive} sequential speed={26} revealDirection="start" parentClassName="decrypted-caption" encryptedClassName="decrypted-encrypted" />
             </div>
+            <div ref={crystalCaptionRef} className="morph-caption morph-caption-crystal" style={{ opacity: 0 }}>
+              <DecryptedText text="ChatGPT — initial build" animateOn="active" active={crystalActive} sequential speed={26} revealDirection="start" parentClassName="decrypted-caption" encryptedClassName="decrypted-encrypted" />
+            </div>
           </div>
           <div className="intro-ui">
-            <span className="intro-index">01 / 03</span>
-            <span className="intro-hint">{phase === 'exiting' ? 'ENTERING' : keyboardActive ? 'SCROLL TO CONTINUE' : 'SCROLL TO MORPH'}</span>
+            <span className="intro-index">{crystalActive ? '04 / 04' : keyboardActive ? '03 / 04' : globeActive ? '02 / 04' : '01 / 04'}</span>
+            <span className="intro-hint">{hint}</span>
           </div>
         </section>
       )}
       {phase === 'hub' && (
         <div className="hub-enter">
-          <MenuHub onBackToIntro={beginReturn} />
+          <MenuHub onBackToIntro={beginReturn} skipFirst="ChatGPT" />
+        </div>
+      )}
+      {crystalOpen && (
+        <div className="crystal-modal" role="dialog" aria-modal="true" aria-label="ChatGPT">
+          <button type="button" className="crystal-modal-backdrop" aria-label="Close" onClick={() => setCrystalOpen(false)} />
+          <div className="crystal-modal-panel">
+            <div className="crystal-modal-bar">
+              <span className="crystal-modal-name">ChatGPT</span>
+              <button type="button" className="crystal-modal-close" onClick={() => setCrystalOpen(false)}>Close</button>
+            </div>
+            <div className="crystal-modal-body">
+              <MenuHub embedModel="ChatGPT" />
+            </div>
+          </div>
         </div>
       )}
     </div>
