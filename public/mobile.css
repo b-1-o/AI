@@ -1,77 +1,195 @@
 @media (max-width: 720px) {
+  :root {
+    --mobile-safe-top: max(14px, env(safe-area-inset-top));
+    --mobile-safe-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 0;
+    min-height: 100%;
+  }
+
+  body {
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .app-shell {
+    width: 100%;
+    min-height: 100svh;
+    overflow: hidden;
+  }
+
   .intro-stage {
+    width: 100%;
     min-height: 100svh;
     height: 100svh;
+    max-height: 100svh;
+    overflow: hidden;
+    touch-action: none;
   }
 
   .intro-image {
-    inset: -7%;
+    inset: -8%;
   }
 
   .intro-copy {
-    padding: 0 16px 12svh;
+    padding: 0 16px calc(12svh + var(--mobile-safe-bottom));
   }
 
   .morph-caption {
-    bottom: 11svh;
+    bottom: calc(11svh + var(--mobile-safe-bottom));
+    width: min(100%, 360px);
     max-width: calc(100vw - 32px);
-    font-size: clamp(0.78rem, 3.3vw, 0.96rem);
+    font-size: clamp(0.76rem, 3.5vw, 0.96rem);
     line-height: 1.45;
   }
 
   .intro-ui {
     left: 16px;
     right: 16px;
-    bottom: max(18px, env(safe-area-inset-bottom));
-    font-size: 0.56rem;
+    bottom: var(--mobile-safe-bottom);
+    font-size: 0.55rem;
+    letter-spacing: 0.11em;
+  }
+
+  .particle-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
   }
 
   .crystal-hit {
-    width: min(220px, 64vw);
-    height: min(300px, 48svh);
+    width: min(250px, 68vw);
+    height: min(330px, 54svh);
     top: 47%;
+    border-radius: 42% 42% 34% 34%;
+  }
+
+  .crystal-inline {
+    align-items: stretch;
+    padding:
+      calc(var(--mobile-safe-top) + 8px)
+      10px
+      calc(var(--mobile-safe-bottom) + 8px);
+  }
+
+  .crystal-inline-dismiss {
+    background: rgba(0, 0, 0, 0.08);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .crystal-inline-mobile-close {
+    position: absolute;
+    top: var(--mobile-safe-top);
+    right: 12px;
+    z-index: 4;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 999px;
+    background: rgba(8, 8, 10, 0.62);
+    color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    font-family: system-ui, sans-serif;
+    font-size: 28px;
+    font-weight: 300;
+    line-height: 1;
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .crystal-inline-mobile-close span {
+    transform: translateY(-1px);
   }
 
   .crystal-inline-content {
+    align-self: center;
     width: min(calc(100vw - 20px), 640px);
-    max-height: 78svh;
-    padding: 4px;
+    max-width: 100%;
+    max-height: calc(100svh - var(--mobile-safe-top) - var(--mobile-safe-bottom) - 18px);
+    margin: 0 auto;
+    padding: 24px 4px 8px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .crystal-inline-content::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .crystal-inline-content .ai-stack {
+    gap: 16px;
   }
 
   .crystal-inline-content .ai-stack-panel {
     padding: 18px 12px 24px;
+    min-height: 0;
+    border-radius: 16px;
   }
 
   .crystal-inline-content .ai-stack-title {
-    font-size: clamp(1.35rem, 7vw, 1.85rem);
+    max-width: 13ch;
+    font-size: clamp(1.3rem, 7vw, 1.85rem);
+    line-height: 1.08;
   }
 
   .crystal-inline-content .ai-stack-body {
+    max-width: 34ch;
     font-size: 0.9rem;
-    line-height: 1.65;
+    line-height: 1.6;
   }
 
   .crystal-inline-content .hub-project-grid,
   .crystal-inline-content .hub-contact-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .hub-project {
-    min-height: 126px;
-    padding: 16px;
+    min-height: 112px;
+    padding: 15px;
+    border-radius: 14px;
   }
 
   .hub-project h3 {
-    font-size: 1.12rem;
+    font-size: 1.05rem;
   }
 
   .hub-project p,
   .hub-contact-desc {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    line-height: 1.5;
   }
 
   .hub-contact-card {
-    min-height: 118px;
-    padding: 18px;
+    min-height: 108px;
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .hub-contact-name {
+    font-size: 1.05rem;
+  }
+
+  .menu-hub-lead {
+    padding: 0 18px;
+    font-size: 0.82rem;
+    line-height: 1.55;
   }
 }
