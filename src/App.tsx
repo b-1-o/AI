@@ -241,7 +241,7 @@ function App() {
         <ParticleMorph
           images={particleImages}
           progressRef={renderedProgressRef}
-          particleDensity={0.85}
+          particleDensity={1}
           className="particle-canvas"
         />
 
