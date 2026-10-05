@@ -11,11 +11,6 @@ type ParticleMorphProps = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
-function smoothstep(x: number) {
-  const t = clamp(x, 0, 1)
-  return t * t * t * (t * (t * 6 - 15) + 10)
-}
-
 function selectEvenly(points: Point[], count: number): Point[] {
   if (points.length === 0) return []
   if (points.length === count) return points
@@ -45,7 +40,7 @@ function selectEvenly(points: Point[], count: number): Point[] {
   })
 }
 
-function sampleImage(src: string, size = 720): Promise<Point[]> {
+function sampleImage(src: string, size = 360): Promise<Point[]> {
   return new Promise((resolve, reject) => {
     const image = new Image()
 
@@ -77,10 +72,12 @@ function sampleImage(src: string, size = 720): Promise<Point[]> {
 
       const pixels = ctx.getImageData(0, 0, size, size).data
       const candidates: Point[] = []
+      const stride = 2
 
-      for (let y = 0; y < size; y += 1) {
-        for (let x = 0; x < size; x += 1) {
-          const index = (y * size + x) * 4
+      for (let y = 0; y < size; y += stride) {
+        const row = y * size
+        for (let x = 0; x < size; x += stride) {
+          const index = (row + x) * 4
           const brightness =
             (pixels[index] + pixels[index + 1] + pixels[index + 2]) / (255 * 3)
 
@@ -210,6 +207,15 @@ const fragmentShader = [
   '}',
 ].join('\n')
 
+function adaptiveParticleCount(density: number) {
+  const w = typeof window !== 'undefined' ? window.innerWidth : 1200
+  const cores = typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 4) : 4
+  let base = w < 480 ? 2200 : w < 760 ? 3200 : w < 1200 ? 4500 : 5800
+  if (cores <= 4) base = Math.round(base * 0.72)
+  if (cores <= 2) base = Math.round(base * 0.55)
+  return Math.max(1200, Math.round(base * density))
+}
+
 export default function ParticleMorph({
   images,
   progressRef,
@@ -241,10 +247,11 @@ export default function ParticleMorph({
     let height = 1
     let pixelRatio = 1
     let stopRenderer = () => {}
+    let lastProgress = -1
+    let idleFrames = 0
+    const IDLE_THRESHOLD = 90
 
-    const particleCount = Math.round(
-      (window.innerWidth < 760 ? 5000 : 8500) * particleDensity,
-    )
+    const particleCount = adaptiveParticleCount(particleDensity)
 
     const setAttribute = (program: WebGLProgram, name: string, values: Float32Array, size: number) => {
       const location = gl.getAttribLocation(program, name)
@@ -261,7 +268,7 @@ export default function ParticleMorph({
     }
 
     const start = async () => {
-      const loaded = await Promise.all(images.map((src) => sampleImage(src)))
+      const loaded = await Promise.all(images.map((src) => sampleImage(src, 360)))
       if (disposed) return () => {}
 
       const prepared = loaded.map((points) => selectEvenly(points, particleCount))
@@ -308,14 +315,13 @@ export default function ParticleMorph({
       gl.enable(gl.BLEND)
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
       gl.clearColor(0, 0, 0, 0)
+      gl.disable(gl.DEPTH_TEST)
+      gl.disable(gl.CULL_FACE)
 
       const resize = () => {
         width = window.innerWidth
         height = window.innerHeight
-        pixelRatio = Math.min(
-          window.devicePixelRatio || 1,
-          window.innerWidth < 760 ? 1.0 : 1.0,
-        )
+        pixelRatio = Math.min(window.devicePixelRatio || 1, 1)
 
         canvas.width = Math.floor(width * pixelRatio)
         canvas.height = Math.floor(height * pixelRatio)
@@ -325,7 +331,7 @@ export default function ParticleMorph({
 
         const aspect = width / Math.max(1, height)
         const fit = 1.18
-        const scaleX = 2.0 * fit / Math.max(1, aspect)
+        const scaleX = (2.0 * fit) / Math.max(1, aspect)
         const scaleY = 2.0 * fit
 
         gl.uniform2f(uniformScale, scaleX, scaleY)
@@ -334,9 +340,16 @@ export default function ParticleMorph({
 
       let running = false
 
-      const requestRender = () => {
+      const requestRender = (force = false) => {
         if (!disposed && running && !document.hidden && frame === 0) {
-          frame = requestAnimationFrame(render)
+          if (force || idleFrames < IDLE_THRESHOLD) {
+            frame = requestAnimationFrame(render)
+          } else {
+            frame = window.setTimeout(() => {
+              frame = 0
+              requestAnimationFrame(render)
+            }, 100) as unknown as number
+          }
         }
       }
 
@@ -344,8 +357,18 @@ export default function ParticleMorph({
         frame = 0
         if (disposed || !running || document.hidden) return
 
+        const progress = progressRef.current
+        const progressDelta = Math.abs(progress - lastProgress)
+
+        if (progressDelta < 0.00005) {
+          idleFrames += 1
+        } else {
+          idleFrames = 0
+          lastProgress = progress
+        }
+
         gl.clear(gl.COLOR_BUFFER_BIT)
-        gl.uniform1f(uniformProgress, progressRef.current)
+        gl.uniform1f(uniformProgress, progress)
         gl.uniform1f(uniformTime, time * 0.001)
         gl.drawArrays(gl.POINTS, 0, particleCount)
 
@@ -355,9 +378,12 @@ export default function ParticleMorph({
       const observer = new IntersectionObserver(
         ([entry]) => {
           running = Boolean(entry?.isIntersecting)
-          if (running) requestRender()
-          else if (frame !== 0) {
+          if (running) {
+            idleFrames = 0
+            requestRender(true)
+          } else if (frame !== 0) {
             cancelAnimationFrame(frame)
+            clearTimeout(frame)
             frame = 0
           }
         },
@@ -368,23 +394,25 @@ export default function ParticleMorph({
         if (document.hidden) {
           if (frame !== 0) {
             cancelAnimationFrame(frame)
+            clearTimeout(frame)
             frame = 0
           }
           return
         }
-
-        requestRender()
+        idleFrames = 0
+        requestRender(true)
       }
 
       resize()
       observer.observe(canvas)
       document.addEventListener('visibilitychange', onVisibilityChange)
-      window.addEventListener('resize', resize)
+      window.addEventListener('resize', resize, { passive: true })
       running = true
-      requestRender()
+      requestRender(true)
 
       return () => {
         cancelAnimationFrame(frame)
+        clearTimeout(frame)
         observer.disconnect()
         document.removeEventListener('visibilitychange', onVisibilityChange)
         window.removeEventListener('resize', resize)
@@ -403,7 +431,10 @@ export default function ParticleMorph({
     return () => {
       disposed = true
       stopRenderer()
-      if (frame) cancelAnimationFrame(frame)
+      if (frame) {
+        cancelAnimationFrame(frame)
+        clearTimeout(frame)
+      }
     }
   }, [images, particleDensity, progressRef])
 
