@@ -1,4 +1,4 @@
-/** Shared faceted crystal mesh → surface points (dot-art). Edge-heavy for facet lines. */
+/** Faceted crystal mesh → surface points. Solid body + light edge outline. */
 
 export type CrystalPt = { x: number; y: number; z: number; s: number }
 
@@ -83,8 +83,8 @@ function sampleTriangle(
   const ab = sub(b, a)
   const ac = sub(c, a)
   const area = 0.5 * len(cross(ab, ac))
-  const nFace = Math.max(0, Math.floor(area * faceDensity * 280))
-  const nEdge = Math.max(3, Math.floor(len(ab) * edgeDensity * 48))
+  const nFace = Math.max(2, Math.floor(area * faceDensity * 720))
+  const nEdge = Math.max(2, Math.floor(len(ab) * edgeDensity * 22))
 
   for (let i = 0; i < nFace; i++) {
     let u = Math.random()
@@ -94,7 +94,7 @@ function sampleTriangle(
       v = 1 - v
     }
     const p = add(a, add(scale(ab, u), scale(ac, v)))
-    out.push({ x: p[0], y: p[1], z: p[2], s: 0.22 + Math.random() * 0.25 })
+    out.push({ x: p[0], y: p[1], z: p[2], s: 0.35 + Math.random() * 0.35 })
   }
 
   const edges: [Vec3, Vec3][] = [
@@ -106,23 +106,14 @@ function sampleTriangle(
     for (let i = 0; i < nEdge; i++) {
       const t = i / (nEdge - 1 || 1)
       const p = lerp(p0, p1, t)
-      const dir = normalize(sub(p1, p0))
-      const up: Vec3 = Math.abs(dir[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]
-      const side = normalize(cross(dir, up))
-      const j = (Math.random() - 0.5) * 0.0025
-      out.push({
-        x: p[0] + side[0] * j,
-        y: p[1] + side[1] * j,
-        z: p[2] + side[2] * j,
-        s: 0.85 + Math.random() * 0.15,
-      })
+      out.push({ x: p[0], y: p[1], z: p[2], s: 0.88 + Math.random() * 0.12 })
     }
   }
 }
 
 let cached: CrystalPt[] | null = null
 
-export function getCrystalPoints(count = 4200): CrystalPt[] {
+export function getCrystalPoints(count = 5200): CrystalPt[] {
   if (cached && cached.length === count) return cached
   if (cached && cached.length > count) {
     const step = cached.length / count
@@ -132,7 +123,7 @@ export function getCrystalPoints(count = 4200): CrystalPt[] {
   const { verts, faces } = buildCrystalVertices()
   const raw: CrystalPt[] = []
   for (const f of faces) {
-    sampleTriangle(verts[f[0]], verts[f[1]], verts[f[2]], 4.5, 1.8, raw)
+    sampleTriangle(verts[f[0]], verts[f[1]], verts[f[2]], 11, 0.85, raw)
   }
 
   for (let i = raw.length - 1; i > 0; i--) {
@@ -144,12 +135,8 @@ export function getCrystalPoints(count = 4200): CrystalPt[] {
 
   let final = raw
   if (raw.length > count) {
-    raw.sort((a, b) => b.s - a.s)
-    const edges = raw.filter((p) => p.s > 0.7)
-    const facesPts = raw.filter((p) => p.s <= 0.7)
-    const edgeN = Math.min(edges.length, Math.floor(count * 0.62))
-    const faceN = count - edgeN
-    final = [...edges.slice(0, edgeN), ...facesPts.slice(0, faceN)]
+    const step = raw.length / count
+    final = Array.from({ length: count }, (_, i) => raw[Math.min(raw.length - 1, Math.floor(i * step))])
   } else if (raw.length < count) {
     final = Array.from({ length: count }, (_, i) => raw[i % raw.length])
   }
