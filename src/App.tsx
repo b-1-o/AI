@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import ParticleMorph from './components/ParticleMorph'
-import AsciiRipple from './components/AsciiRipple'
 import DecryptedText from './components/DecryptedText'
 import b1oImage from '../assets/b1o.jpg'
 import ballImage from '../assets/ball.jpg'
@@ -305,10 +304,6 @@ function App() {
       </section>
 
       <main className="content">
-        <div className="content-ascii-bg" aria-hidden="true">
-          <AsciiRipple dense className="ascii-ripple ascii-ripple-page" />
-        </div>
-
         <section className="statement section-pad">
           <div className="eyebrow">01 — PRINCIPLE</div>
           <h1>
