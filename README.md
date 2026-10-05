@@ -1,32 +1,39 @@
-# b1o — AI is not enemy, it's tool
+# b1o — AI
 
-Cinematic AI/developer portfolio with a wheel-driven particle intro.
+> A cinematic interactive developer experience exploring AI, particles, motion, and GPU-friendly visual interfaces.
 
-## Intro interaction
+The project opens with a wheel-driven particle sequence that transforms the `b1o` identity into a globe, then into a keyboard interaction.
 
-- `b1o` is formed from particles.
-- Mouse wheel / touch movement continuously scrubs the same particle field into a globe.
-- The same particles continue into a 75% keyboard.
-- Hands animate over the completed keyboard.
-- Only after the keyboard state is complete does normal page scrolling unlock.
-- Scrolling back to the top lets the particle sequence reverse.
+## Experience
 
-## React Bits Pro
+- Particle-based `b1o` introduction
+- Wheel and touch driven progression
+- Continuous particle morphing
+- Globe and keyboard states
+- Animated hands
+- Scroll locking during the intro
+- Reversible interaction when returning to the top
+- GPU-friendly canvas rendering
+- ASCII ripple effects
 
-The repo includes a `components.json` registry setup and `.env.example` for React Bits Pro. The documented Particle Morph component exposes ordered image sources and a controlled `activeIndex`; it does not expose a continuous particle-progress prop. Because this design requires true wheel-by-wheel interpolation, the intro uses a local GPU-friendly canvas morph implementation for the continuous scrub while keeping the project ready for React Bits Pro installs.
+## Tech Stack
 
-ASCII Ripple is also implemented locally so the repository remains runnable without a Pro license installed yet; it follows the same interactive monospace-liquid visual role.
+React 19 · TypeScript · Vite · GSAP · Canvas · React Bits compatible architecture
 
-React Bits Pro references:
-- https://pro.reactbits.dev/docs/components/particle-morph
-- https://pro.reactbits.dev/docs/components/ascii-ripple
-- https://pro.reactbits.dev/docs/installation
-
-## Run
+## Getting Started
 
 ```bash
 npm install
 npm run dev
+npm run build
+npm run preview
 ```
 
-For React Bits Pro CLI installs, copy `.env.example` to `.env.local` and add your `REACTBITS_LICENSE_KEY`.
+## React Bits
+
+The repository includes React Bits Pro configuration. Continuous particle interpolation is implemented locally because this experience requires continuous progress rather than discrete states.
+
+If using React Bits Pro, configure `REACTBITS_LICENSE_KEY` through `.env.local` based on `.env.example`.
+
+**Live:** https://b-1-o.github.io/AI/  
+**Repository:** https://github.com/b-1-o/AI
