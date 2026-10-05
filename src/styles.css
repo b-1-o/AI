@@ -262,9 +262,6 @@ body, canvas { overscroll-behavior: none; }
   cursor: pointer;
   pointer-events: auto;
 }
-.crystal-inline-mobile-close {
-  display: none;
-}
 .crystal-inline-content {
   position: relative;
   z-index: 1;
