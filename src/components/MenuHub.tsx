@@ -41,7 +41,11 @@ const contacts = [
   { name: 'Fiverr', href: 'https://www.fiverr.com/users/webbio', desc: 'Hire for builds & interfaces', Logo: null as null | typeof LogoGitHub },
 ]
 
-type MenuHubProps = { onBackToIntro?: () => void }
+type MenuHubProps = {
+  onBackToIntro?: () => void
+  skipFirst?: CrystalId
+  embedModel?: CrystalId
+}
 
 function useSectionProgress(count: number) {
   const [progress, setProgress] = useState<number[]>(() => Array(count).fill(0))
@@ -74,9 +78,10 @@ function useSectionProgress(count: number) {
   return { progress, setRef }
 }
 
-export default function MenuHub({ onBackToIntro }: MenuHubProps) {
+export default function MenuHub({ onBackToIntro, skipFirst, embedModel }: MenuHubProps) {
   const [open, setOpen] = useState<CrystalId | null>(null)
-  const { progress, setRef } = useSectionProgress(SECTIONS.length)
+  const sections = skipFirst ? SECTIONS.filter((s) => s.id !== skipFirst) : SECTIONS
+  const { progress, setRef } = useSectionProgress(sections.length)
   const isAI = open === 'ChatGPT' || open === 'Grok' || open === 'Gemini'
 
   useEffect(() => {
@@ -92,6 +97,25 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
       document.body.style.overflow = prev
     }
   }, [open])
+
+  if (embedModel) {
+    const embedIsAI = embedModel === 'ChatGPT' || embedModel === 'Grok' || embedModel === 'Gemini'
+    return (
+      <div className="menu-hub-embed">
+        {embedIsAI && (
+          <div className="menu-hub-ai">
+            <ScrollFloat playOnMount animationDuration={0.75} stagger={0.025} ease="power3.out">
+              {embedModel}
+            </ScrollFloat>
+            <p className="menu-hub-model-sub menu-hub-model-sub--below">
+              {SECTIONS.find((x) => x.id === embedModel)?.sub}
+            </p>
+            <AIStack key={embedModel} focusModel={embedModel} defaultLeaf={AI_DEFAULT[embedModel]} />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="menu-hub menu-hub--scroll">
@@ -111,9 +135,8 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
       </header>
 
       <div className="crystal-scroll">
-        {SECTIONS.map((s, i) => {
+        {sections.map((s, i) => {
           const p = progress[i] ?? 0
-          // one crystal at a time near viewport center
           const inView = p > 0.22 && p < 0.78
           return (
             <section
@@ -149,7 +172,7 @@ export default function MenuHub({ onBackToIntro }: MenuHubProps) {
                 </div>
               </button>
               <div className="crystal-section-index">
-                {String(i + 1).padStart(2, '0')} / {String(SECTIONS.length).padStart(2, '0')}
+                {String(i + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}
               </div>
             </section>
           )
