@@ -19,7 +19,6 @@ body, canvas { overscroll-behavior: none; }
 
 .site { background: #050505; }
 
-/* Skip layout/paint work for off-screen sections */
 .content > section {
   content-visibility: auto;
   contain-intrinsic-size: auto 700px;
@@ -106,7 +105,6 @@ body, canvas { overscroll-behavior: none; }
   color: rgba(244, 244, 242, 0.42);
 }
 
-
 .typing-hands {
   position: absolute;
   z-index: 6;
@@ -133,7 +131,51 @@ body, canvas { overscroll-behavior: none; }
   to { transform: translateY(7px) rotate(-1deg); }
 }
 
-.content { position: relative; background: #050505; }
+.content {
+  position: relative;
+  background: #050505;
+  isolation: isolate;
+}
+
+.content-ascii-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: auto;
+  opacity: 0.5;
+  overflow: hidden;
+}
+
+.content > section {
+  position: relative;
+  z-index: 1;
+}
+
+.ascii-ripple-page {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.decrypted-caption {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+.decrypted-encrypted {
+  opacity: 0.42;
+  color: rgba(244, 244, 242, 0.55);
+  font-family: var(--mono);
+}
+
+.morph-caption .decrypted-caption {
+  display: block;
+  max-width: 680px;
+}
 
 .section-pad {
   width: min(1240px, calc(100% - 56px));
@@ -174,7 +216,7 @@ body, canvas { overscroll-behavior: none; }
   overflow: hidden;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  background: #070707;
+  background: rgba(7, 7, 7, 0.72);
 }
 
 .ascii-ripple {
@@ -195,7 +237,7 @@ body, canvas { overscroll-behavior: none; }
   flex-direction: column;
   justify-content: space-between;
   pointer-events: none;
-  background: radial-gradient(circle at 52% 38%, rgba(255,255,255,0.035), transparent 42%);
+  background: radial-gradient(circle at 52% 38%, rgba(255,255,255,0.04), transparent 42%);
 }
 
 .ascii-content h2 {
@@ -338,4 +380,3 @@ body, canvas { overscroll-behavior: none; }
   .tool-row { grid-template-columns: 92px 1fr; gap: 16px; }
   .contact-row { flex-wrap: wrap; gap: 18px; }
 }
-
