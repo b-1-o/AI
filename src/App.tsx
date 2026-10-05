@@ -304,10 +304,10 @@ function App() {
       const dir = dy > 0 ? 1 : dy < 0 ? -1 : 0
       if (dir === 0) return
 
-      // Only leave the crystal timeline from Contact, and only when swiping down.
-      // Finger moving down => dy < 0.
+      // Mobile uses the opposite physical swipe direction for the Contact -> b1o exit.
+      // Swipe up / move finger up => dy > 0.
       if (
-        dir < 0 &&
+        dir > 0 &&
         targetProgressRef.current >= CRYSTAL_START &&
         crystalActiveRef.current &&
         activeCrystalRef.current === CRYSTALS.length - 1
