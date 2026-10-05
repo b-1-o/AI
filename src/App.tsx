@@ -97,11 +97,9 @@ function App() {
       for (let i = 0; i < CRYSTALS.length; i++) stops.push(CRYSTAL_START + i)
       let target = current
       if (dir > 0) {
-        const next = stops.find((s) => s > current + 0.08)
-        target = next !== undefined ? next : 0
+        target = stops.find((s) => s > current + 0.08) ?? current
       } else if (dir < 0) {
-        const prev = [...stops].reverse().find((s) => s < current - 0.08)
-        target = prev !== undefined ? prev : MAX_PROGRESS
+        target = [...stops].reverse().find((s) => s < current - 0.08) ?? current
       }
       targetProgressRef.current = clamp(target, 0, MAX_PROGRESS)
       wakeAnimationRef.current?.()
@@ -205,29 +203,39 @@ function App() {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+      if (modalOpenRef.current) return
+
       const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0
       if (dir === 0) return
 
-      // A crystal is a navigation section, not another particle-morph stage.
-      // When leaving any crystal, send the actual visual morph directly from
-      // the crystal shape back to b1o. The renderer then performs one smooth
-      // reverse interpolation through keyboard -> ball -> b1o.
+      const delta = e.deltaY * DESKTOP_SENSITIVITY
       if (dir < 0 && targetProgressRef.current >= CRYSTAL_START) {
         if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
         if (panelAnimRef.current !== null) cancelAnimationFrame(panelAnimRef.current)
+        if (dissolveAnimRef.current !== null) cancelAnimationFrame(dissolveAnimRef.current)
+        snapTimerRef.current = null
         panelAnimRef.current = null
+        dissolveAnimRef.current = null
         panelRef.current = 0
+        dissolveRef.current = 0
         modalOpenRef.current = false
         setPanelReady(false)
         setModalOpen(false)
-        targetProgressRef.current = 0
-        lastDirectionRef.current = 0
+
+        // The WebGL morph is visually parked at exactly 3 while all
+        // navigation crystals use 3..MAX_PROGRESS. Reset the rendered
+        // position to that visible boundary before continuing backwards.
+        renderedProgressRef.current = CRYSTAL_START
+        targetProgressRef.current = clamp(CRYSTAL_START + delta, 0, CRYSTAL_START)
+        lastDirectionRef.current = dir
+        applyProgressRef.current(renderedProgressRef.current)
         wake()
+        scheduleDirectionalSnap(dir)
         return
       }
 
       targetProgressRef.current = clamp(
-        targetProgressRef.current + e.deltaY * DESKTOP_SENSITIVITY,
+        targetProgressRef.current + delta,
         0,
         MAX_PROGRESS,
       )
@@ -238,28 +246,39 @@ function App() {
       lastTouchY.current = e.touches[0]?.clientY ?? 0
     }
     const onTouchMove = (e: TouchEvent) => {
+      if (modalOpenRef.current) return
+
       const y = e.touches[0]?.clientY ?? lastTouchY.current
       const dy = lastTouchY.current - y
       lastTouchY.current = y
       const dir = dy > 0 ? 1 : dy < 0 ? -1 : 0
       if (dir === 0) return
 
+      const delta = dy * TOUCH_SENSITIVITY
       if (dir < 0 && targetProgressRef.current >= CRYSTAL_START) {
         if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
         if (panelAnimRef.current !== null) cancelAnimationFrame(panelAnimRef.current)
+        if (dissolveAnimRef.current !== null) cancelAnimationFrame(dissolveAnimRef.current)
+        snapTimerRef.current = null
         panelAnimRef.current = null
+        dissolveAnimRef.current = null
         panelRef.current = 0
+        dissolveRef.current = 0
         modalOpenRef.current = false
         setPanelReady(false)
         setModalOpen(false)
-        targetProgressRef.current = 0
-        lastDirectionRef.current = 0
+
+        renderedProgressRef.current = CRYSTAL_START
+        targetProgressRef.current = clamp(CRYSTAL_START + delta, 0, CRYSTAL_START)
+        lastDirectionRef.current = dir
+        applyProgressRef.current(renderedProgressRef.current)
         wake()
+        scheduleDirectionalSnap(dir)
         return
       }
 
       targetProgressRef.current = clamp(
-        targetProgressRef.current + dy * TOUCH_SENSITIVITY,
+        targetProgressRef.current + delta,
         0,
         MAX_PROGRESS,
       )
