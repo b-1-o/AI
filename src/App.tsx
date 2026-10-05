@@ -208,8 +208,10 @@ function App() {
       const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0
       if (dir === 0) return
 
-      // Leaving any crystal state should immediately return to the actual
-      // particle-morph timeline instead of traversing hidden crystal slots.
+      // A crystal is a navigation section, not another particle-morph stage.
+      // When leaving any crystal, send the actual visual morph directly from
+      // the crystal shape back to b1o. The renderer then performs one smooth
+      // reverse interpolation through keyboard -> ball -> b1o.
       if (dir < 0 && targetProgressRef.current >= CRYSTAL_START) {
         if (snapTimerRef.current !== null) window.clearTimeout(snapTimerRef.current)
         if (panelAnimRef.current !== null) cancelAnimationFrame(panelAnimRef.current)
@@ -218,9 +220,10 @@ function App() {
         modalOpenRef.current = false
         setPanelReady(false)
         setModalOpen(false)
-        targetProgressRef.current = CRYSTAL_START
-        renderedProgressRef.current = CRYSTAL_START
-        applyProgressRef.current(CRYSTAL_START)
+        targetProgressRef.current = 0
+        lastDirectionRef.current = 0
+        wake()
+        return
       }
 
       targetProgressRef.current = clamp(
@@ -249,9 +252,10 @@ function App() {
         modalOpenRef.current = false
         setPanelReady(false)
         setModalOpen(false)
-        targetProgressRef.current = CRYSTAL_START
-        renderedProgressRef.current = CRYSTAL_START
-        applyProgressRef.current(CRYSTAL_START)
+        targetProgressRef.current = 0
+        lastDirectionRef.current = 0
+        wake()
+        return
       }
 
       targetProgressRef.current = clamp(
