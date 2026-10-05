@@ -8,6 +8,7 @@ import b1oImage from '../assets/b1o.jpg'
 import ballImage from '../assets/ball.jpg'
 import keyboardImage from '../assets/keyboard.jpg'
 import crystalImage from '../assets/crystal.jpg'
+import squareImage from '../assets/squere.jpeg'
 import palatImage from '../assets/palat.jpeg'
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
@@ -60,6 +61,8 @@ function App() {
   const [crystalActive, setCrystalActive] = useState(false)
   const [activeCrystal, setActiveCrystal] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
+  const [panelReady, setPanelReady] = useState(false)
+  const modalOpenRef = useRef(false)
 
   const targetProgressRef = useRef(0)
   const renderedProgressRef = useRef(0)
@@ -196,6 +199,7 @@ function App() {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
+      if (modalOpenRef.current) return
       const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0
       if (dir !== 0) scheduleDirectionalSnap(dir)
       targetProgressRef.current = clamp(
@@ -209,6 +213,7 @@ function App() {
       lastTouchY.current = e.touches[0]?.clientY ?? 0
     }
     const onTouchMove = (e: TouchEvent) => {
+      if (modalOpenRef.current) return
       const y = e.touches[0]?.clientY ?? lastTouchY.current
       const dy = lastTouchY.current - y
       lastTouchY.current = y
@@ -268,13 +273,19 @@ function App() {
   }, [])
 
   const openPanel = useCallback(() => {
+    modalOpenRef.current = true
     setModalOpen(true)
+    setPanelReady(false)
     panelRef.current = 0
-    animatePanel(1)
+    animatePanel(1, () => setPanelReady(true))
   }, [animatePanel])
 
   const closePanel = useCallback(() => {
-    animatePanel(0, () => setModalOpen(false))
+    setPanelReady(false)
+    animatePanel(0, () => {
+      modalOpenRef.current = false
+      setModalOpen(false)
+    })
   }, [animatePanel])
 
   useEffect(() => {
@@ -298,6 +309,7 @@ function App() {
         <div className="intro-vignette" aria-hidden="true" />
         <ParticleMorph
           images={particleImages}
+          squareSrc={squareImage}
           progressRef={morphProgressRef}
           dissolveRef={dissolveRef}
           panelRef={panelRef}
@@ -366,7 +378,7 @@ function App() {
                 Close
               </button>
             </div>
-            <div className="crystal-modal-body">
+            <div className={`crystal-modal-body${panelReady ? ' crystal-modal-body--in' : ''}`}>
               {(crystal.id === 'ChatGPT' || crystal.id === 'Grok' || crystal.id === 'Gemini') && crystal.leaf && (
                 <AIStack focusModel={crystal.id} defaultLeaf={crystal.leaf} />
               )}
