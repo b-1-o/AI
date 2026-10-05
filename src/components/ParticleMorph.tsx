@@ -353,17 +353,22 @@ export default function ParticleMorph({
       gl.disable(gl.CULL_FACE)
 
       const resize = () => {
-        const width = window.innerWidth
-        const height = window.innerHeight
-        const pixelRatio = Math.min(window.devicePixelRatio || 1, 1)
+        const width = Math.max(1, canvas.clientWidth || window.innerWidth)
+        const height = Math.max(1, canvas.clientHeight || window.innerHeight)
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5)
         canvas.width = Math.floor(width * pixelRatio)
         canvas.height = Math.floor(height * pixelRatio)
-        canvas.style.width = '100%'
-        canvas.style.height = '100%'
         gl.viewport(0, 0, canvas.width, canvas.height)
-        const aspect = width / Math.max(1, height)
+
+        // Use the canvas's real CSS size. On mobile the viewport height can
+        // differ from 100svh, which previously made round particles look stretched.
+        const aspect = width / height
         const fit = 1.18
-        gl.uniform2f(uniformScale, (2.0 * fit) / Math.max(1, aspect), 2.0 * fit)
+        gl.uniform2f(
+          uniformScale,
+          (2.0 * fit) / Math.max(0.0001, aspect),
+          2.0 * fit,
+        )
         gl.uniform1f(uniformPixelRatio, pixelRatio)
       }
 
@@ -424,6 +429,10 @@ export default function ParticleMorph({
       resize()
       window.addEventListener('resize', resize)
       document.addEventListener('visibilitychange', onVisibility)
+      const resizeObserver = typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => resize())
+        : null
+      resizeObserver?.observe(canvas)
       running = true
       requestRender(true)
 
@@ -431,6 +440,7 @@ export default function ParticleMorph({
         running = false
         window.removeEventListener('resize', resize)
         document.removeEventListener('visibilitychange', onVisibility)
+        resizeObserver?.disconnect()
         if (frame) {
           cancelAnimationFrame(frame)
           clearTimeout(frame)
