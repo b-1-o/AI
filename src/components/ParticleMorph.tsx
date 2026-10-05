@@ -16,7 +16,13 @@ type ParticleMorphProps = {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 function selectEvenly(points: Point[], count: number): Point[] {
-  if (points.length === 0) return []
+  if (points.length === 0) {
+    return Array.from({ length: count }, (_, i) => {
+      const a = (i / Math.max(1, count)) * Math.PI * 2
+      const r = 0.15 + (i % 5) * 0.02
+      return { x: Math.cos(a) * r, y: Math.sin(a) * r, strength: 0.4 }
+    })
+  }
   if (points.length === count) return points
   if (points.length > count) {
     const result: Point[] = new Array(count)
@@ -265,9 +271,14 @@ export default function ParticleMorph({
     const start = async () => {
       const baseImgs = images.slice(0, 3)
       const squareUrl = squareSrc || images[3]
+      const safeSample = (src: string, size = 720) =>
+        sampleImage(src, size).catch((err) => {
+          console.warn(err)
+          return [] as Point[]
+        })
       const loaded = await Promise.all([
-        ...baseImgs.map((src) => sampleImage(src)),
-        squareUrl ? sampleImage(squareUrl, 640) : Promise.resolve([] as Point[]),
+        ...baseImgs.map((src) => safeSample(src)),
+        squareUrl ? safeSample(squareUrl, 640) : Promise.resolve([] as Point[]),
       ])
       if (disposed) return () => {}
 
@@ -283,13 +294,15 @@ export default function ParticleMorph({
       const square = new Float32Array(particleCount * 4)
       const mesh = getCrystalPoints(particleCount)
 
+      const fb = { x: 0, y: 0, strength: 0.35 }
+      const fbc = { x: 0, y: 0, z: 0, s: 0.35 }
       for (let i = 0; i < particleCount; i += 1) {
         const offset = i * 4
-        const b1 = prepared[0][i]
-        const ba = prepared[1][i]
-        const kb = prepared[2][i]
-        const cr = mesh[i]
-        const sq = squarePts[i]
+        const b1 = prepared[0][i] ?? fb
+        const ba = prepared[1][i] ?? fb
+        const kb = prepared[2][i] ?? fb
+        const cr = mesh[i] ?? fbc
+        const sq = squarePts[i] ?? kb
 
         b1o[offset] = b1.x
         b1o[offset + 1] = b1.y
