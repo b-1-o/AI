@@ -201,28 +201,44 @@ function App() {
     panelRef.current = 0
     dissolveRef.current = 0
     modalOpenRef.current = false
+
+    // Reset the navigation state completely before revealing the home scene.
+    // This is the same particle buffer; no WebGL context or geometry is rebuilt.
+    targetProgressRef.current = 0
+    renderedProgressRef.current = 0
+    morphProgressRef.current = 0
+    activeCrystalRef.current = 0
+    globeActiveRef.current = false
+    keyboardActiveRef.current = false
+    crystalActiveRef.current = false
+
     setPanelReady(false)
     setModalOpen(false)
+    setActiveCrystal(0)
+    setGlobeActive(false)
+    setKeyboardActive(false)
+    setCrystalActive(false)
 
-    // Keep the crystal on screen for the fade-out. The WebGL buffer itself
-    // is not rebuilt; only its visibility is changed.
+    // First hide the current crystal, then switch the existing buffer to b1o
+    // while hidden, and only then reveal it again.
     setParticleVisible(false)
 
     if (crystalExitTimerRef.current !== null) {
       window.clearTimeout(crystalExitTimerRef.current)
     }
     crystalExitTimerRef.current = window.setTimeout(() => {
-      // While hidden, switch the existing particle buffer to the b1o state.
-      // Nothing is recreated and no crystal geometry is sampled again.
-      targetProgressRef.current = 0
-      renderedProgressRef.current = 0
       applyProgressRef.current(0)
-      crystalExitTimerRef.current = null
-      setParticleVisible(true)
 
-      // Let the normal timeline continue from b1o.
-      crystalExitAnimatingRef.current = false
-      wakeAnimationRef.current?.()
+      // Give the browser a frame to paint the reset b1o buffer before fading it in.
+      requestAnimationFrame(() => {
+        crystalExitTimerRef.current = null
+        setParticleVisible(true)
+
+        requestAnimationFrame(() => {
+          crystalExitAnimatingRef.current = false
+          wakeAnimationRef.current?.()
+        })
+      })
     }, 280)
   }, [])
 
@@ -257,7 +273,11 @@ function App() {
 
       // Only leave the crystal timeline from Contact, and only when scrolling down.
       // Wheel down = deltaY > 0.
-      if (dir > 0 && activeCrystalRef.current === CRYSTALS.length - 1) {
+      if (
+        dir > 0 &&
+        targetProgressRef.current >= CRYSTAL_START &&
+        activeCrystalRef.current === CRYSTALS.length - 1
+      ) {
         exitCrystalToHome()
         return
       }
@@ -290,7 +310,11 @@ function App() {
 
       // Only leave the crystal timeline from Contact, and only when swiping down.
       // Finger moving down => dy < 0.
-      if (dir < 0 && activeCrystalRef.current === CRYSTALS.length - 1) {
+      if (
+        dir < 0 &&
+        targetProgressRef.current >= CRYSTAL_START &&
+        activeCrystalRef.current === CRYSTALS.length - 1
+      ) {
         exitCrystalToHome()
         return
       }
