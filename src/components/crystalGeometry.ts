@@ -2,28 +2,28 @@
 
 export type CrystalPt = { x: number; y: number; z: number; s: number }
 
-type Vec3 = [number, number, number]
+export type Vec3 = [number, number, number]
 
-function add(a: Vec3, b: Vec3): Vec3 {
+export function add(a: Vec3, b: Vec3): Vec3 {
   return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
 }
-function sub(a: Vec3, b: Vec3): Vec3 {
+export function sub(a: Vec3, b: Vec3): Vec3 {
   return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
-function scale(a: Vec3, s: number): Vec3 {
+export function scale(a: Vec3, s: number): Vec3 {
   return [a[0] * s, a[1] * s, a[2] * s]
 }
-function lerp(a: Vec3, b: Vec3, t: number): Vec3 {
+export function lerp(a: Vec3, b: Vec3, t: number): Vec3 {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
 }
-function len(a: Vec3): number {
+export function len(a: Vec3): number {
   return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) || 1
 }
-function cross(a: Vec3, b: Vec3): Vec3 {
+export function cross(a: Vec3, b: Vec3): Vec3 {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
 }
 
-function buildCrystalVertices(): { verts: Vec3[]; faces: number[][]; edgeList: [number, number][] } {
+export function buildCrystalVertices(): { verts: Vec3[]; faces: number[][]; edgeList: [number, number][] } {
   const sides = 6
   const verts: Vec3[] = []
   verts.push([0, 0.48, 0])
@@ -90,7 +90,7 @@ function buildCrystalVertices(): { verts: Vec3[]; faces: number[][]; edgeList: [
   return { verts, faces, edgeList }
 }
 
-function sampleFace(a: Vec3, b: Vec3, c: Vec3, density: number, out: CrystalPt[]) {
+export function sampleFace(a: Vec3, b: Vec3, c: Vec3, density: number, out: CrystalPt[]) {
   const ab = sub(b, a)
   const ac = sub(c, a)
   const area = 0.5 * len(cross(ab, ac))
@@ -107,7 +107,7 @@ function sampleFace(a: Vec3, b: Vec3, c: Vec3, density: number, out: CrystalPt[]
   }
 }
 
-function sampleEdge(a: Vec3, b: Vec3, density: number, out: CrystalPt[]) {
+export function sampleEdge(a: Vec3, b: Vec3, density: number, out: CrystalPt[]) {
   const L = len(sub(b, a))
   const n = Math.max(6, Math.floor(L * density * 90))
   for (let i = 0; i <= n; i++) {

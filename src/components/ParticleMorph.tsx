@@ -13,9 +13,10 @@ type ParticleMorphProps = {
   className?: string
 }
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+export const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value))
 
-function selectEvenly(points: Point[], count: number): Point[] {
+export function selectEvenly(points: Point[], count: number): Point[] {
   if (points.length === 0) {
     return Array.from({ length: count }, (_, i) => {
       const a = (i / Math.max(1, count)) * Math.PI * 2
@@ -360,11 +361,7 @@ export default function ParticleMorph({
         canvas.height = Math.floor(height * pixelRatio)
         gl.viewport(0, 0, canvas.width, canvas.height)
 
-        // Use the canvas's real CSS size. On mobile the viewport height can
-        // differ from 100svh, which previously made round particles look stretched.
         const aspect = width / height
-        // Keep the mobile composition comfortably inside the screen.
-        // Desktop keeps the existing scale; phones use a smaller fit.
         const fit = width < 720 ? 0.80 : 1.18
         gl.uniform2f(
           uniformScale,
