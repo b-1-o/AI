@@ -1,4 +1,5 @@
 # b1o — AI Experience
+
 [![Tests](https://github.com/b-1-o/AI/actions/workflows/test.yml/badge.svg)](https://github.com/b-1-o/AI/actions/workflows/test.yml)
 
 Cinematic interactive developer experience. A scroll-driven visual journey built around a custom particle system that morphs between states — intro → globe → keyboard — using GSAP timelines and Canvas rendering.
