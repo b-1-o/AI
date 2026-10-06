@@ -8,9 +8,6 @@ Cinematic interactive developer experience. A scroll-driven visual journey built
 ## Preview
 ![Preview](./assets/preview.jpeg)
 
-![Demo](./assets/demo.gif)
-*(GIF will be added — recording in progress)*
-
 ## Features
 - Custom particle system on Canvas with continuous morphing between states
 - GSAP-driven timeline: intro sequence → globe → keyboard
