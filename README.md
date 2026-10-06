@@ -5,7 +5,7 @@ Cinematic interactive developer experience. A scroll-driven visual journey built
 ## Live Demo
 [b-1-o.github.io/AI](https://b-1-o.github.io/AI/)
 
-## Preview
+
 ![Preview](./assets/preview.jpeg)
 
 ## Features
